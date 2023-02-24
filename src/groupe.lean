@@ -1,6 +1,6 @@
 
 
--- première version
+
 
 
 section
@@ -23,16 +23,57 @@ instance groupe_has_mul (G : groupe) :
 instance groupe_has_one (G: groupe) :
   has_one (G.ens) := ⟨G.neutre⟩
 
+instance groupe_has_inv (G: groupe) :
+  has_inv (G.ens) := ⟨G.inv⟩
 
---instance groupe_to_ens : has_coe_to_sort groupe :=
---{S := Type u, coe := λ S, S.ens}
+
+
+instance groupe_to_ens : has_coe_to_sort groupe (Type u) :=
+  ⟨λ a : groupe, a.ens⟩
+
 
 structure sous_groupe (G: groupe) :=
   (sous_ens : set G.ens)
-  (mul_stab : ∀ a b ∈ sous_ens, G.mul a b ∈ sous_ens)
-  (inv_stab : ∀ a ∈ sous_ens, G.inv a ∈ sous_ens)
+  (mul_stab : ∀ a b ∈ sous_ens, a*b ∈ sous_ens)
+  (inv_stab : ∀ a ∈ sous_ens, a⁻¹ ∈ sous_ens)
   (contient_neutre : G.neutre ∈ sous_ens )
 
+instance sous_groupe_to_groupe {G: groupe}:
+  has_coe (sous_groupe G) groupe :=
+  ⟨λ SG : sous_groupe G,
+  begin
+    let ss_type := {a : G.ens // a ∈ SG.sous_ens},
+    let new_mul : ss_type → ss_type → ss_type := 
+      λ x y, ⟨x.val*y.val, SG.mul_stab x.val x.property y.val y.property⟩,
+    let new_inv : ss_type → ss_type, intro x, 
+      split, 
+      show G.ens, from x⁻¹, 
+      exact SG.inv_stab x.val x.property,
+      have hs : ∀ x y  : ss_type, 
+        new_mul x y = ⟨x.val*y.val, SG.mul_stab x.val x.property y.val y.property⟩,
+      intros, refl,
+      have h_sep : ∀ u v: G.ens, ∀ hp : (u*v) ∈ SG.sous_ens, (⟨u*v,hp⟩:ss_type).val = u*v,
+      intros, refl,
+    apply groupe.mk ss_type new_mul ⟨G.neutre, SG.contient_neutre⟩ new_inv,
+      intros,
+      -- 1) Preuve que la restriction de la multiplication reste associative:
+        rw (hs a b), rw hs b c,  rw hs _ c, rw hs a _,
+        -- Utiliser rw h_sep ne marche pas ici, je n'arrive pas encore à la comprendre pourquoi mais 
+        -- voici une explication : https://proofassistants.stackexchange.com/a/1063
+        simp only [h_sep] {single_pass := tt},
+        exact G.mul_assoc a.val b.val c.val,
+      
+      -- 2) Preuve que l'élement neutre est toujours neutre 
+      intro, rw hs _, simp only [h_sep] {single_pass := tt},
+      have wow : G.neutre*x.val = G.mul G.neutre x.val, refl, simp only [wow] {single_pass := tt},--why?
+      simp only [G.neutre_gauche] {single_pass := tt},
+      have help : ∀ h : x.val ∈ SG.sous_ens, (⟨x.val, h⟩ : ss_type) = ⟨x.val, x.property⟩,
+      intro, refl,
+      have help2 : x = ⟨x.val, x.property⟩, sorry,  -- TODO
+      sorry, -- TODO  
+      sorry, -- TODO 
+  end
+  ⟩
 
 /--def sous_type (G:groupe) (sg : sous_groupe G) := { x : G.ens // x ∈ sg.sous_ens }
 
