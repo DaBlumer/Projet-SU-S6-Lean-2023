@@ -101,14 +101,18 @@ def a := 2
 namespace groupe
 
 theorem neutre_droite {G : groupe} : ∀ a : G.ens, a*1 = a :=
-  sorry 
+ sorry
 
 theorem inv_droite {G: groupe} : ∀ a : G.ens, a * (G.inv a) = 1 :=
   sorry
 
 
 theorem neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
-  sorry
+  begin
+  have h1 := h 1,
+  rw neutre_droite at h1,
+  rwa h1,
+  end
 
 theorem inv_unique {G: groupe} (a : G.ens) (b : G.ens) (h: b*a = 1) : b = G.inv a :=
   sorry
