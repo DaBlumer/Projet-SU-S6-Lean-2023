@@ -8,6 +8,19 @@ section
 universe u
  
 
+
+/-*******************************Définitions et coertions de base ******************************-/
+
+/-
+Définition principale d'un groupe
+- On choisit ici pour les axiomes le neutre et l'inversibilité à gauche,
+les deux propriétés correspondantes à droite seront exprimées comme des
+lemmes. 
+- On choisit également d'exprimer l'ensemble porteur du groupe comme 
+membre de la structure et non comme paramètre du type groupe (à discuter)
+- Laisser la structure être une classe semble être plus pertinent que ce
+qui est fait maintenant ? (à discuter)
+-/
 structure groupe : Type (u+1) :=
   (ens : Type u)
   (mul : ens → ens → ens )
@@ -16,6 +29,18 @@ structure groupe : Type (u+1) :=
   (mul_assoc : ∀ a b c : ens, mul (mul a b) c = mul a (mul b c))  
   (neutre_gauche : ∀ x : ens, mul neutre x = x)
   (inv_gauche : ∀ x : ens, mul (inv x) x = neutre)
+
+
+
+/-
+Coertions pour simplifier la notation : 
+- Avec un groupe G, on peut écrire a : G au lieu de a : G.ens
+- Avec deux éléments a, b : G.ens, on peut écrire a*b au lieu de G.mul a b
+- Avec un élément a : G.ens, on peut écrire a*1 au lieu de a*G.neutre
+- Enfin, avec un élément a : G.ens, on peut écrire a⁻¹ (tapé a\-1) au lieu de G.inv a 
+-/
+instance groupe_to_ens : has_coe_to_sort groupe (Type u) :=
+  ⟨λ a : groupe, a.ens⟩
 
 instance groupe_has_mul (G : groupe) :
   has_mul (G.ens) := ⟨G.mul⟩
@@ -27,17 +52,27 @@ instance groupe_has_inv (G: groupe) :
   has_inv (G.ens) := ⟨G.inv⟩
 
 
-
-instance groupe_to_ens : has_coe_to_sort groupe (Type u) :=
-  ⟨λ a : groupe, a.ens⟩
-
-
+/- 
+Structure d'un sous_groupe : 
+pour un groupe G, on fournit un sous ensemble et les preuves de stabilité de G.mul et G.inv
+-/
 structure sous_groupe (G: groupe) :=
   (sous_ens : set G.ens)
   (mul_stab : ∀ a b ∈ sous_ens, a*b ∈ sous_ens)
   (inv_stab : ∀ a ∈ sous_ens, a⁻¹ ∈ sous_ens)
   (contient_neutre : G.neutre ∈ sous_ens )
 
+
+/-
+Coertion permettant de voir un sous groupe d'un groupe G comme étant lui même
+un groupe. 
+Il suffit de fournir les éléments de la structure de groupe:
+  * .ens sera le sous-type de G.ens qui correspond à l'ensemble du ss-groupe 
+  * .mul et .inv seront juste la 'restriction' au sous type (en utilisant la preuve de stabilité)
+  * .neutre sera le neutre de G
+  * On fournit les preuves de l'associativité, l'inversibilité et neutre à gauche
+  * Commentaires pour décrire la preuve incomming
+-/
 instance sous_groupe_to_groupe {G: groupe}:
   has_coe (sous_groupe G) groupe :=
   ⟨λ SG : sous_groupe G,
@@ -67,15 +102,14 @@ instance sous_groupe_to_groupe {G: groupe}:
       intro, rw hs _, simp only [h_sep] {single_pass := tt},
       have wow : G.neutre*x.val = G.mul G.neutre x.val, refl, simp only [wow] {single_pass := tt},--why?
       simp only [G.neutre_gauche] {single_pass := tt},
-      have help : ∀ h : x.val ∈ SG.sous_ens, (⟨x.val, h⟩ : ss_type) = ⟨x.val, x.property⟩,
-      intro, refl,
-      have help2 : x = ⟨x.val, x.property⟩, sorry,  -- TODO
+      cases x, -- haha...
+      
       sorry, -- TODO  
       sorry, -- TODO 
   end
   ⟩
 
-/--def sous_type (G:groupe) (sg : sous_groupe G) := { x : G.ens // x ∈ sg.sous_ens }
+/-def sous_type (G:groupe) (sg : sous_groupe G) := { x : G.ens // x ∈ sg.sous_ens }
 
 def mul_sg (G: groupe) (SG : sous_groupe G) (a b : sous_type G) :=
 
@@ -94,11 +128,15 @@ instance sous_groupe_to_groupe {G: groupe }:
     end
   )
 --/
-def a := 2
+/-******************************Fin Définitions et coertions de base *****************************-/
 
 
 
-namespace groupe
+
+
+-- permet d'avoir accès à tous les théorèmes sous le même nom que la structure
+-- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
+namespace groupe 
 
 theorem neutre_droite {G : groupe} : ∀ a : G.ens, a*1 = a :=
  sorry
