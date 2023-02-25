@@ -58,7 +58,7 @@ pour un groupe G, on fournit un sous ensemble et les preuves de stabilité de G.
 -/
 structure sous_groupe (G: groupe) :=
   (sous_ens : set G.ens)
-  (mul_stab : ∀ a b ∈ sous_ens, a*b ∈ sous_ens)
+  (mul_stab : ∀ a b ∈ sous_ens, G.mul a b ∈ sous_ens)
   (inv_stab : ∀ a ∈ sous_ens, a⁻¹ ∈ sous_ens)
   (contient_neutre : G.neutre ∈ sous_ens )
 
@@ -76,11 +76,11 @@ Il suffit de fournir les éléments de la structure de groupe:
 instance sous_groupe_to_groupe {G: groupe}:
   has_coe (sous_groupe G) groupe :=
   ⟨λ SG : sous_groupe G,
-  begin
-    let ss_type := {a : G.ens // a ∈ SG.sous_ens},
-    let new_mul : ss_type → ss_type → ss_type := 
+  begin -- Constuction du groupe
+    let ss_type := {a : G.ens // a ∈ SG.sous_ens}, -- .ens
+    let new_mul : ss_type → ss_type → ss_type :=  -- .mul
       λ x y, ⟨x.val*y.val, SG.mul_stab x.val x.property y.val y.property⟩,
-    let new_inv : ss_type → ss_type, intro x, 
+    let new_inv : ss_type → ss_type, intro x, -- .inv
       split, 
       show G.ens, from x⁻¹, 
       exact SG.inv_stab x.val x.property,
@@ -102,32 +102,17 @@ instance sous_groupe_to_groupe {G: groupe}:
       intro, rw hs _, simp only [h_sep] {single_pass := tt},
       have wow : G.neutre*x.val = G.mul G.neutre x.val, refl, simp only [wow] {single_pass := tt},--why?
       simp only [G.neutre_gauche] {single_pass := tt},
-      cases x, -- haha...
+      apply subtype.eq, refl,
       
-      sorry, -- TODO  
-      sorry, -- TODO 
+      -- 3) Preuve que (inv x) * x = neutre est toujours vraie
+      intro, rw hs, rw subtype.mk.inj_eq, 
+      have hh : (new_inv x).val = (G.inv x.val), refl,
+      rw hh, have : G.inv x.val * x.val = G.mul (G.inv x.val) x.val, refl, rw this, 
+      rw G.inv_gauche _,  
   end
   ⟩
 
-/-def sous_type (G:groupe) (sg : sous_groupe G) := { x : G.ens // x ∈ sg.sous_ens }
 
-def mul_sg (G: groupe) (SG : sous_groupe G) (a b : sous_type G) :=
-
-
-
-instance sous_groupe_to_groupe {G: groupe }:
-  has_coe (sous_groupe G) groupe :=
-  (λ sg : sous_groupe G, 
-    let sous_type :=  in
-    let mul_sg := λ x : sous_type, λ y : sous_type, 
-       sous_type.mk  (G.mul x.val y.val) (sg.mul_stab x y 
-    begin
-      apply groupe.mk { x : G.ens // x ∈ sg.sous_ens } 
-     
-      
-    end
-  )
---/
 /-******************************Fin Définitions et coertions de base *****************************-/
 
 
