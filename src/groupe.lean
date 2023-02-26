@@ -112,6 +112,35 @@ instance sous_groupe_to_groupe {G: groupe}:
   end
   ⟩
 
+--instance sous_groupe_to_sous_type {G: groupe} :
+ -- has_coe_to_sort (sous_groupe G) (Type u) := 
+  --⟨λ H: sous_groupe G, {a // H.sous_ens a}⟩
+
+
+
+section 
+
+variable (G: groupe)
+variable (H: sous_groupe G)
+variable (a : G)
+variable (b : {c // H.sous_ens c})
+variable (b' : (@coe_sort.{u+1 u+2} (sous_groupe G) (Type u)
+    (@coe_sort_trans.{u+2 u+1 u+2} (sous_groupe G) groupe (Type u) groupe_to_ens
+       (@coe_base_aux.{u+1 u+2} (sous_groupe G) groupe (@sous_groupe_to_groupe G)))
+    H))
+
+#reduce (@coe_sort.{u+1 u+2} (sous_groupe G) (Type u)
+    (@coe_sort_trans.{u+2 u+1 u+2} (sous_groupe G) groupe (Type u) groupe_to_ens
+       (@coe_base_aux.{u+1 u+2} (sous_groupe G) groupe (@sous_groupe_to_groupe G)))
+    H)
+
+#reduce a*b -- works
+#reduce a*(b') -- does not work 
+
+end
+
+set_option pp.all true
+example (G: groupe) (H : sous_groupe G) (a : G) (b : H): G.ens := G.mul a b
 
 /-******************************Fin Définitions et coertions de base *****************************-/
 
