@@ -9,7 +9,7 @@ universe u
  
 
 
-/-*******************************Définitions et coertions de base ******************************-/
+/-*******************************Définitions et coercions de base ******************************-/
 
 /-
 Définition principale d'un groupe
@@ -33,7 +33,7 @@ structure groupe : Type (u+1) :=
 
 
 /-
-Coertions pour simplifier la notation : 
+coercions pour simplifier la notation : 
 - Avec un groupe G, on peut écrire a : G au lieu de a : G.ens
 - Avec deux éléments a, b : G.ens, on peut écrire a*b au lieu de G.mul a b
 - Avec un élément a : G.ens, on peut écrire a*1 au lieu de a*G.neutre
@@ -64,7 +64,7 @@ structure sous_groupe (G: groupe) :=
 
 
 /-
-Coertion permettant de voir un sous groupe d'un groupe G comme étant lui même
+Coercion permettant de voir un sous groupe d'un groupe G comme étant lui même
 un groupe. 
 Il suffit de fournir les éléments de la structure de groupe:
   * .ens sera le sous-type de G.ens qui correspond à l'ensemble du ss-groupe 
@@ -108,8 +108,32 @@ instance morphisme_to_fonction {G H : groupe}
   ⟨λ m, m.mor⟩
 
 
+section -- exemples d'utilisation transparente des coercions
 
-/-******************************Fin Définitions et coertions de base *****************************-/
+variables (G G' G'': groupe) (H : sous_groupe G)
+
+-- ici G est vu comme G.ens, G' comme G'.ens et H comme {a : G.ens // a∈H.sous_ens}
+variables (g₁ g₂ : G) (g₁' g₂' : G') (h₁ h₂ : H) 
+
+variables (f : morphisme G G') (g : morphisme G' G'') (h : morphisme G' H)
+
+example : G' := f g₁ -- ici f est vu comme f.mor
+
+/-
+Dans cet exemple plusieures inférences intérviennent : 
+1) Comme f est utilisée comme fonction, f est vue comme f.mor
+2) Comme g₁ : G.ens et que G.ens a une instance de has_mul, * est interpété comme G.mul
+3) Comme on veut appliquer G.mul à h₁ : {a : G.ens // a∈H.sous_ens}, h₁ est vu comme h₁.val : G.ens
+-/
+example : G' := f (g₁*h₁) 
+
+-- Ici G est vu comme G.ens, H comme {a : G.ens // a∈H.sous_ens}
+-- et on peut définir la composée des deux morphismes simplement : 
+example : G → H := h∘f
+
+end -- fin exemples
+
+/-******************************Fin Définitions et coercions de base *****************************-/
 
 
 
