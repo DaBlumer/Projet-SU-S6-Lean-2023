@@ -86,6 +86,17 @@ instance sous_groupe_to_groupe {G: groupe}:
     inv_gauche := λ x, by {rw subtype.mk.inj_eq, unfold subtype.val, exact G.inv_gauche x.val},
   }⟩
 
+  /-
+  Coercion permettant d'écrire (x : H) avec H un sous_groupe, et voir x comme un élément du type des éléments.
+  Normalement, on a déjà une coercion qui avec (G: groupe) et (H: sous_groupe G) nous fait :
+  H -> A:groupe -> A.ens (avec A.ens égal à {a:G.ens//a∈H.sous_ens}) -> G.ens
+  Mais la dernière coercion ne se fait pas (https://proofassistants.stackexchange.com/q/2014/2164) 
+  -/
+instance sous_groupe_to_sous_type {G: groupe} 
+  : has_coe_to_sort (sous_groupe G) (Type u) :=
+  ⟨λ H, {a // a ∈ H.sous_ens}⟩ 
+
+
 
 /-******************************Fin Définitions et coertions de base *****************************-/
 
