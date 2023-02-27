@@ -146,7 +146,7 @@ namespace groupe
 theorem neutre_droite {G : groupe} : ∀ a : G.ens, a*1 = a :=
  sorry
 
-theorem inv_droite {G: groupe} : ∀ a : G.ens, a * (G.inv a) = 1 :=
+theorem inv_droite {G: groupe} : ∀ a : G.ens, a * a⁻¹ = 1 :=
   sorry
 
 
@@ -157,14 +157,14 @@ theorem neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   rwa h1,
   end
 
-theorem inv_unique {G: groupe} (a : G.ens) (b : G.ens) (h: b*a = 1) : b = G.inv a :=
+theorem inv_unique {G: groupe} (a : G.ens) (b : G.ens) (h: b*a = 1) : b = a⁻¹ :=
   sorry
 
 inductive ordre 
   | entier : ℕ → ordre  
   | infini : ordre
 
-def puissance {G: groupe} (x : G.ens) (n : ℕ ) : G.ens :=
+def puissance {G: groupe} (x : G) (n : ℕ ) : G :=
   begin
     induction n with m hm,
     exact G.neutre, -- si c'est 0
@@ -175,24 +175,24 @@ def puissance {G: groupe} (x : G.ens) (n : ℕ ) : G.ens :=
 
 
 
-theorem mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f.mor G.neutre = H.neutre :=
+theorem mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
   sorry
 
-theorem mor_inv_inv_mor {G H : groupe} {f : morphisme G H}  (a : G.ens) : f.mor (G.inv a) = H.inv (f.mor a) :=
+theorem mor_inv_inv_mor {G H : groupe} {f : morphisme G H}  (a : G) : f a⁻¹ =  (f a)⁻¹ :=
   sorry
 
 
-def ker {G H : groupe} (f : morphisme G H) : set G.ens :=
-  {a : G.ens | f.mor a = H.neutre}
+def ker {G H : groupe} (f : morphisme G H) : set G :=
+  {a : G.ens | f a = 1}
 
-def im {G H : groupe} (f : morphisme G H) : set H.ens :=
-  {b : H.ens | ∃ a : G.ens, f.mor a = b }
+def im {G H : groupe} (f : morphisme G H) : set H :=
+  {b : H | ∃ a : G, f a = b }
 
-def ens_reciproque {G H : groupe} (f : morphisme G H) (B: set H.ens) :=
-  {a : G.ens | f.mor a ∈ B }
+def ens_reciproque {G H : groupe} (f : morphisme G H) (B: set H) :=
+  {a : G | f a ∈ B }
 
-def ens_image {G H : groupe} (f : morphisme G H) (A: set G.ens) :=
-  {b : H.ens | ∃ a ∈ A, f.mor a = b}
+def ens_image {G H : groupe} (f : morphisme G H) (A: set G) :=
+  {b : H | ∃ a ∈ A, f a = b}
 
 def comp {G H K: groupe} (f : morphisme G H) (g : morphisme H K) : morphisme G K := 
   sorry
@@ -208,7 +208,7 @@ theorem im_comp_eq_im_im {G H K: groupe} (f : morphisme G H) (g : morphisme H K)
 
 
 def isomorphisme {G H: groupe } (f : morphisme G H) :=
-  ∃ g : morphisme H G, (∀ a : G.ens,  g.mor (f.mor a) = a)
+  ∃ g : morphisme H G, (∀ a : G,  g (f a) = a)
 
 
 
