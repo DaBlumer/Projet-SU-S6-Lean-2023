@@ -97,6 +97,17 @@ instance sous_groupe_to_sous_type {G: groupe}
   ⟨λ H, {a // a ∈ H.sous_ens}⟩ 
 
 
+-- Définition d'un morphisme de groupes
+structure morphisme (G H : groupe) :=
+  (mor : G → H)
+  (resp_mul : ∀ a b : G, mor (a*b) = (mor a) * (mor b) )
+
+-- Permet de voir un morphisme comme l'application sous-jacente quand c'est nécessaire
+instance morphisme_to_fonction {G H : groupe}
+  : has_coe_to_fun (morphisme G H) (λ _, G → H) :=
+  ⟨λ m, m.mor⟩
+
+
 
 /-******************************Fin Définitions et coertions de base *****************************-/
 
@@ -138,9 +149,6 @@ def puissance {G: groupe} (x : G.ens) (n : ℕ ) : G.ens :=
 
 
 
-structure morphisme (G H : groupe) :=
-  (mor : G.ens → H.ens)
-  (resp_mul : ∀ a b : G.ens, mor (a*b) = (mor a) * (mor b) )
 
 
 theorem mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f.mor G.neutre = H.neutre :=
