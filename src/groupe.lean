@@ -76,41 +76,15 @@ Il suffit de fournir les éléments de la structure de groupe:
 instance sous_groupe_to_groupe {G: groupe}:
   has_coe (sous_groupe G) groupe :=
   ⟨λ SG : sous_groupe G,
-  begin -- Constuction du groupe
-    let ss_type := {a : G.ens // a ∈ SG.sous_ens}, -- .ens
-    let new_mul : ss_type → ss_type → ss_type :=  -- .mul
-      λ x y, ⟨x.val*y.val, SG.mul_stab x.val x.property y.val y.property⟩,
-    let new_inv : ss_type → ss_type, intro x, -- .inv
-      split, 
-      show G.ens, from x⁻¹, 
-      exact SG.inv_stab x.val x.property,
-      have hs : ∀ x y  : ss_type, 
-        new_mul x y = ⟨x.val*y.val, SG.mul_stab x.val x.property y.val y.property⟩,
-      intros, refl,
-      have h_sep : ∀ u v: G.ens, ∀ hp : (u*v) ∈ SG.sous_ens, (⟨u*v,hp⟩:ss_type).val = u*v,
-      intros, refl,
-    apply groupe.mk ss_type new_mul ⟨G.neutre, SG.contient_neutre⟩ new_inv,
-      intros,
-      -- 1) Preuve que la restriction de la multiplication reste associative:
-        rw (hs a b), rw hs b c,  rw hs _ c, rw hs a _,
-        -- Utiliser rw h_sep ne marche pas ici, je n'arrive pas encore à la comprendre pourquoi mais 
-        -- voici une explication : https://proofassistants.stackexchange.com/a/1063
-        simp only [h_sep] {single_pass := tt},
-        exact G.mul_assoc a.val b.val c.val,
-      
-      -- 2) Preuve que l'élement neutre est toujours neutre 
-      intro, rw hs _, simp only [h_sep] {single_pass := tt},
-      have wow : G.neutre*x.val = G.mul G.neutre x.val, refl, simp only [wow] {single_pass := tt},--why?
-      simp only [G.neutre_gauche] {single_pass := tt},
-      apply subtype.eq, refl,
-      
-      -- 3) Preuve que (inv x) * x = neutre est toujours vraie
-      intro, rw hs, rw subtype.mk.inj_eq, 
-      have hh : (new_inv x).val = (G.inv x.val), refl,
-      rw hh, have : G.inv x.val * x.val = G.mul (G.inv x.val) x.val, refl, rw this, 
-      rw G.inv_gauche _,  
-  end
-  ⟩
+  {groupe .
+    ens := {a // a ∈ SG.sous_ens},
+    mul :=  λ x y, ⟨x.val*y.val, SG.mul_stab x.val x.property y.val y.property⟩,
+    inv := λ x, ⟨x.val⁻¹, SG.inv_stab x.val x.property⟩,
+    neutre := ⟨G.neutre, SG.contient_neutre⟩,
+    mul_assoc := λ x y z, by {rw subtype.mk.inj_eq, unfold subtype.val, exact G.mul_assoc x y z},
+    neutre_gauche := λ x, by {cases x, rw subtype.mk.inj_eq, unfold subtype.val, exact G.neutre_gauche _},
+    inv_gauche := λ x, by {rw subtype.mk.inj_eq, unfold subtype.val, exact G.inv_gauche x.val},
+  }⟩
 
 
 /-******************************Fin Définitions et coertions de base *****************************-/
