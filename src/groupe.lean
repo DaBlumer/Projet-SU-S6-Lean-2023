@@ -137,21 +137,21 @@ end -- fin exemples
 namespace groupe
 
 
-theorem neutre_droite {G : groupe} : ∀ a : G.ens, a*1 = a :=
+lemma neutre_droite {G : groupe} : ∀ a : G.ens, a*1 = a :=
  sorry
 
-theorem inv_droite {G: groupe} : ∀ a : G.ens, a * a⁻¹ = 1 :=
+lemma inv_droite {G: groupe} : ∀ a : G.ens, a * a⁻¹ = 1 :=
   sorry
 
 
-theorem neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
+lemma neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   begin
   have h1 := h 1,
   rw neutre_droite at h1,
   rwa h1,
   end
 
-theorem inv_unique (G: groupe) {a : G} {b : G} (h: b*a = 1) : b = a⁻¹ :=
+lemma inv_unique (G: groupe) {a : G} {b : G} (h: b*a = 1) : b = a⁻¹ :=
   sorry
 
 end groupe
@@ -216,8 +216,18 @@ def sous_groupe_engendre₂ {G: groupe} (A : set G) : sous_groupe G :=
   contient_neutre := by {apply Exists.intro [], unfold prod_all, refl,} 
 }
 
+section
+
+-- Pour définir l'ordre, (∃ n : ℕ, x^(n:ℤ) = 1) n'est pas une proposition décidable en général
+-- Il faut donc utiliser le module classical pour que toutes les propositions soient décidables
+open classical
+local attribute [instance, priority 10] prop_decidable
+
+noncomputable def ordre {G : groupe} (x : G) : ℕ :=
+  if h : (∃ n : ℕ, x^(n:ℤ) = 1) then nat.find h else 0
 
 
+end
 /-******************************Fin Définitions et coercions de base *****************************-/
 
 
@@ -227,14 +237,6 @@ def sous_groupe_engendre₂ {G: groupe} (A : set G) : sous_groupe G :=
 -- permet d'avoir accès à tous les théorèmes sous le même nom que la structure
 -- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
 namespace groupe 
-
-
-inductive ordre 
-  | entier : ℕ → ordre  
-  | infini : ordre
-
-
-
 
 
 theorem mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
