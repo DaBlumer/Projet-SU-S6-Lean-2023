@@ -1,6 +1,7 @@
 
 
-
+import .generique
+open generique
 
 
 section
@@ -133,15 +134,8 @@ example : G → H := h∘f
 
 end -- fin exemples
 
-/-******************************Fin Définitions et coercions de base *****************************-/
+namespace groupe
 
-
-
-
-
--- permet d'avoir accès à tous les théorèmes sous le même nom que la structure
--- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
-namespace groupe 
 
 theorem neutre_droite {G : groupe} : ∀ a : G.ens, a*1 = a :=
  sorry
@@ -157,19 +151,87 @@ theorem neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   rwa h1,
   end
 
-theorem inv_unique {G: groupe} (a : G.ens) (b : G.ens) (h: b*a = 1) : b = a⁻¹ :=
+theorem inv_unique (G: groupe) {a : G} {b : G} (h: b*a = 1) : b = a⁻¹ :=
   sorry
+
+end groupe
+
+
+def puissance {G: groupe} (x : G) (n : ℤ) : G :=
+  begin
+    induction n with m m',
+      induction m with k hk, -- si c'est m avec m ≥ 0
+        exact G.neutre, -- si c'est 0
+        exact hk*x, -- si c'est k+1 avec k>=0 et x^k = hk
+      induction m' with k hk, -- si c'est -(m' + 1) avec m' ≥ 0
+        exact x⁻¹, -- si c'est -1
+        exact hk*x⁻¹ -- si c'est -(n+1) avec x^(-n) = hk
+  end 
+
+instance {G: groupe} : has_pow G ℤ :=  ⟨puissance⟩
+
+def est_sous_groupe {G: groupe} (A : set G) : Prop 
+  := (∀ a ∈ A, a⁻¹ ∈ A) ∧ (∀ a b ∈ A, a*b ∈ A) ∧ (G.neutre ∈ A)
+
+
+def sous_groupe_engendre {G: groupe} (A : set G) : sous_groupe G :=
+{
+  sous_ens := ⋂ X : {X': set G // est_sous_groupe X' ∧ A ⊆ X'}, X.val,
+  mul_stab := 
+  begin
+    intros, unfold Inter at *,
+    intro B, exact B.property.left.right.left a (H B) b (H_1 B),
+  end, 
+  inv_stab := by {intros, unfold Inter at *, intro B, exact B.property.left.left a (H B)}, 
+  contient_neutre := by {unfold Inter, intro B, exact B.property.left.right.right}
+}
+
+def sous_groupe_engendre₂ {G: groupe} (A : set G) : sous_groupe G := 
+  let F := (λ a:{x//A x}×bool, if a.snd = tt then a.fst.val else a.fst.val⁻¹) in {
+  sous_groupe.
+  sous_ens :=  {x | ∃ L : list ({x//A x}×bool), x = prod_all L F},
+  mul_stab := 
+  begin
+    intros, 
+    cases H with decomp_a ha, cases H_1 with decomp_b hb, 
+    apply Exists.intro (decomp_a ++ decomp_b), 
+    rw mul_prod_of_concat decomp_a decomp_b _ G.neutre_gauche G.mul_assoc, rw ←ha, rw ←hb, refl, 
+  end,
+  inv_stab := 
+  begin
+    intros, cases H with dec_a ha, revert a, 
+    induction dec_a with a' l hrec,
+      intros a ha,  unfold prod_all at ha, apply Exists.intro [], unfold prod_all, 
+      have h1 : 1*a = 1, rw ha, exact G.neutre_gauche 1,
+      rw G.inv_unique h1,
+      
+      intros a ha, 
+      have hx : prod_all l F = prod_all l F, refl, 
+      have hy := hrec (prod_all l F) hx, 
+      cases hy with b L',
+      cases a'.snd,
+        apply Exists.intro (a' :: b), unfold prod_all at ha, unfold prod_all, 
+        sorry, sorry,
+  end,
+  contient_neutre := by {apply Exists.intro [], unfold prod_all, refl,} 
+}
+
+
+
+/-******************************Fin Définitions et coercions de base *****************************-/
+
+
+
+
+
+-- permet d'avoir accès à tous les théorèmes sous le même nom que la structure
+-- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
+namespace groupe 
+
 
 inductive ordre 
   | entier : ℕ → ordre  
   | infini : ordre
-
-def puissance {G: groupe} (x : G) (n : ℕ ) : G :=
-  begin
-    induction n with m hm,
-    exact G.neutre, -- si c'est 0
-    exact hm*x, -- si c'est m+1 avec x^m = hm
-  end 
 
 
 
