@@ -1,5 +1,6 @@
 
 
+
 import .generique
 open generique
 
@@ -43,6 +44,7 @@ coercions pour simplifier la notation :
 instance groupe_to_ens : has_coe_to_sort groupe (Type u) :=
   ⟨λ a : groupe, a.ens⟩
 
+@[reducible]
 instance groupe_has_mul (G : groupe) :
   has_mul (G.ens) := ⟨G.mul⟩
 
@@ -57,7 +59,7 @@ instance groupe_has_inv (G: groupe) :
 Structure d'un sous_groupe : 
 pour un groupe G, on fournit un sous ensemble et les preuves de stabilité de G.mul et G.inv
 -/
-class sous_groupe (G: groupe) :=
+structure sous_groupe (G: groupe) :=
   (sous_ens : set G.ens)
   (mul_stab : ∀ a b ∈ sous_ens, G.mul a b ∈ sous_ens)
   (inv_stab : ∀ a ∈ sous_ens, a⁻¹ ∈ sous_ens)
@@ -87,16 +89,19 @@ instance sous_groupe_to_groupe {G: groupe}:
     inv_gauche := λ x, by {rw subtype.mk.inj_eq, unfold subtype.val, exact G.inv_gauche x.val},
   }⟩
 
-  /-
-  Coercion permettant d'écrire (x : H) avec H un sous_groupe, et voir x comme un élément du type des éléments.
-  Normalement, on a déjà une coercion qui avec (G: groupe) et (H: sous_groupe G) nous fait :
-  H -> A:groupe -> A.ens (avec A.ens égal à {a:G.ens//a∈H.sous_ens}) -> G.ens
-  Mais la dernière coercion ne se fait pas (https://proofassistants.stackexchange.com/q/2014/2164) 
-  -/
+/-
+Coercion permettant d'écrire (x : H) avec H un sous_groupe, et voir x comme un élément du type des éléments.
+Normalement, on a déjà une coercion qui avec (G: groupe) et (H: sous_groupe G) nous fait :
+H -> A:groupe -> A.ens (avec A.ens égal à {a:G.ens//a∈H.sous_ens}) -> G.ens
+Mais la dernière coercion ne se fait pas (https://proofassistants.stackexchange.com/q/2014/2164) 
+-/
 instance sous_groupe_to_sous_type {G: groupe} 
   : has_coe_to_sort (sous_groupe G) (Type u) :=
   ⟨λ H, {a // a ∈ H.sous_ens}⟩ 
-
+-- Coertion utile quand on veut voir un sous groupe comme un ensemble (ex: déf de distingué)
+instance sous_groupe_to_sous_ens {G: groupe} 
+  : has_coe (sous_groupe G) (set G) :=
+  ⟨λ H, H.sous_ens⟩ 
 
 -- Définition d'un morphisme de groupes
 structure morphisme (G H : groupe) :=
@@ -164,7 +169,13 @@ lemma inv_of_mul (G: groupe) (a b : G) : (a*b)⁻¹ = b⁻¹ * a⁻¹ :=
 lemma inv_involution (G : groupe) (a : G) : (a⁻¹)⁻¹ = a :=
   sorry
 
+lemma mul_droite_div_droite (G : groupe) (a b c : G) : a * b = c ↔ a = c * b⁻¹ :=
+  sorry
 
+lemma mul_gauche_div_gauche (G : groupe) (a b c : G) : a * b = c ↔ b = a⁻¹ * c :=
+  sorry
+
+lemma mul_assoc' (G : groupe) (a b c : G) : a * b * c = a * (b * c) := G.mul_assoc a b c
 
 def puissance {G: groupe} (x : G) (n : ℤ) : G :=
   begin
@@ -242,7 +253,59 @@ begin
     by {apply Exists.intro [], unfold prod_all, refl} -- G.neutre ∈ sous_groupe_engendre₂ A 
 end
 
+def mul_gauche_ens {G : groupe} (a : G) (H : set G) : set G :=
+  {g : G | ∃ h ∈ H, g = a*h}
+def mul_droite_ens {G : groupe} (H : set G) (a : G) : set G :=
+  {g : G | ∃ h ∈ H, g = h*a}
 
+def est_distingue {G : groupe} (H : sous_groupe G) : Prop :=
+  ∀ a:G, mul_gauche_ens a H = mul_droite_ens H a
+
+def rel_gauche_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
+  λ x y : G, y ∈ mul_gauche_ens x H 
+def rel_droite_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
+  λ x y : G, y ∈ mul_droite_ens ↑H x 
+
+@[instance] def rel_equivalence_gauche {G : groupe} (H : sous_groupe G) : setoid G := ⟨
+  rel_gauche_mod H,
+  begin
+    split,
+    begin
+    intro, apply Exists.intro (1:G), rw G.neutre_droite,
+    apply Exists.intro H.contient_neutre, refl
+    end,
+    split,
+    begin
+      intros x y hxy, cases hxy with g hg, cases hg with hg eg,
+      have ge := eg.symm, 
+      rw ← (G.mul_droite_div_droite x g y).symm at ge,
+      apply Exists.intro g⁻¹, apply Exists.intro (H.inv_stab g hg),
+      exact ge,   
+    end,
+    begin
+      intros x y z hxy hyz, cases hxy with g hg, cases hyz with g₂ hg₂,
+      cases hg with hg eg, cases hg₂ with hg₂ eg₂, 
+      rw eg at eg₂, rw G.mul_assoc' x g g₂ at eg₂,
+      apply Exists.intro (g*g₂), apply Exists.intro (H.mul_stab g hg g₂ hg₂),
+      exact eg₂,
+    end,
+  end
+⟩
+
+def ensemble_quotient_gauche {G : groupe} (H : sous_groupe G) : set (set G)
+  := classes_equivalence (rel_equivalence_gauche H)
+
+def groupe_quotient {G : groupe} (H : sous_groupe G) (dH : est_distingue H) : groupe :=
+let G_H := ensemble_quotient_gauche H in
+{
+ ens := {A : set G // A ∈ G_H },
+ mul := sorry,
+ inv := sorry,
+ neutre := sorry,
+ inv_gauche := sorry,
+ mul_assoc := sorry, 
+ neutre_gauche := sorry,
+}
 
 
 section

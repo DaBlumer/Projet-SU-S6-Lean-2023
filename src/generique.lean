@@ -28,4 +28,8 @@ begin
   rw list.cons_append, unfold prod_all, rw l₁_ih, rw mul_assoc, 
 end
 
+
+def classes_equivalence {α : Type*} (r : setoid α ) : set (set α)
+  := {A | ∃ x, A = {y | r.r x y}}
+
 end generique
