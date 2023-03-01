@@ -137,10 +137,10 @@ end -- fin exemples
 namespace groupe
 
 
-lemma neutre_droite {G : groupe} : ∀ a : G.ens, a*1 = a :=
+lemma neutre_droite (G : groupe) : ∀ a : G.ens, a*1 = a :=
  sorry
 
-lemma inv_droite {G: groupe} : ∀ a : G.ens, a * a⁻¹ = 1 :=
+lemma inv_droite (G: groupe) : ∀ a : G.ens, a * a⁻¹ = 1 :=
   sorry
 
 
@@ -152,6 +152,12 @@ lemma neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   end
 
 lemma inv_unique (G: groupe) {a : G} {b : G} (h: b*a = 1) : b = a⁻¹ :=
+  sorry
+
+lemma inv_of_mul (G: groupe) (a b : G) : (a*b)⁻¹ = b⁻¹ * a⁻¹ :=
+  sorry
+
+lemma inv_involution (G : groupe) (a : G) : (a⁻¹)⁻¹ = a :=
   sorry
 
 end groupe
@@ -209,9 +215,16 @@ def sous_groupe_engendre₂ {G: groupe} (A : set G) : sous_groupe G :=
       have hx : prod_all l F = prod_all l F, refl, 
       have hy := hrec (prod_all l F) hx, 
       cases hy with b L',
-      cases a'.snd,
-        apply Exists.intro (a' :: b), unfold prod_all at ha, unfold prod_all, 
-        sorry, sorry,
+      apply Exists.intro (b ++ [(⟨a'.fst, bnot a'.snd⟩ : {x// A x}×bool)]), 
+      rw mul_prod_of_concat _ _ _ G.neutre_gauche G.mul_assoc,
+      unfold prod_all, unfold prod_all at ha, 
+      rw ha, rw G.inv_of_mul, rw L', rw G.neutre_droite,
+      have a_is_a : a' = (⟨a'.fst, a'.snd⟩:{x// A x}×bool), exact prod.mk.eta.symm, 
+      have unf_ff : ∀ g, F ⟨g, bool.ff⟩ = g⁻¹, intro, refl,
+      have unf_tt : ∀ g, F ⟨g, bool.tt⟩ = g, intro, refl,
+      cases a'.snd; rw a_is_a; unfold bnot, 
+        {rw unf_ff, rw G.inv_involution, rw unf_tt},
+        {rw unf_tt, rw unf_ff}
   end,
   contient_neutre := by {apply Exists.intro [], unfold prod_all, refl,} 
 }
