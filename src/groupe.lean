@@ -57,7 +57,7 @@ instance groupe_has_inv (G: groupe) :
 Structure d'un sous_groupe : 
 pour un groupe G, on fournit un sous ensemble et les preuves de stabilité de G.mul et G.inv
 -/
-structure sous_groupe (G: groupe) :=
+class sous_groupe (G: groupe) :=
   (sous_ens : set G.ens)
   (mul_stab : ∀ a b ∈ sous_ens, G.mul a b ∈ sous_ens)
   (inv_stab : ∀ a ∈ sous_ens, a⁻¹ ∈ sous_ens)
@@ -134,6 +134,10 @@ example : G → H := h∘f
 
 end -- fin exemples
 
+
+
+-- permet d'avoir accès à tous les théorèmes sous le même nom que la structure
+-- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
 namespace groupe
 
 
@@ -160,7 +164,6 @@ lemma inv_of_mul (G: groupe) (a b : G) : (a*b)⁻¹ = b⁻¹ * a⁻¹ :=
 lemma inv_involution (G : groupe) (a : G) : (a⁻¹)⁻¹ = a :=
   sorry
 
-end groupe
 
 
 def puissance {G: groupe} (x : G) (n : ℤ) : G :=
@@ -180,54 +183,67 @@ def est_sous_groupe {G: groupe} (A : set G) : Prop
   := (∀ a ∈ A, a⁻¹ ∈ A) ∧ (∀ a b ∈ A, a*b ∈ A) ∧ (G.neutre ∈ A)
 
 
-def sous_groupe_engendre {G: groupe} (A : set G) : sous_groupe G :=
-{
-  sous_ens := ⋂ X : {X': set G // est_sous_groupe X' ∧ A ⊆ X'}, X.val,
-  mul_stab := 
-  begin
-    intros, unfold Inter at *,
-    intro B, exact B.property.left.right.left a (H B) b (H_1 B),
-  end, 
-  inv_stab := by {intros, unfold Inter at *, intro B, exact B.property.left.left a (H B)}, 
-  contient_neutre := by {unfold Inter, intro B, exact B.property.left.right.right}
-}
+def sous_groupe_engendre {G: groupe} (A : set G) : set G :=
+  ⋂ X : {X': set G // est_sous_groupe X' ∧ A ⊆ X'}, X.val
 
-def sous_groupe_engendre₂ {G: groupe} (A : set G) : sous_groupe G := 
-  let F := (λ a:{x//A x}×bool, if a.snd = tt then a.fst.val else a.fst.val⁻¹) in {
-  sous_groupe.
-  sous_ens :=  {x | ∃ L : list ({x//A x}×bool), x = prod_all L F},
-  mul_stab := 
-  begin
-    intros, 
-    cases H with decomp_a ha, cases H_1 with decomp_b hb, 
-    apply Exists.intro (decomp_a ++ decomp_b), 
-    rw mul_prod_of_concat decomp_a decomp_b _ G.neutre_gauche G.mul_assoc, rw ←ha, rw ←hb, refl, 
+def sous_groupe_engendre₂ {G: groupe} (A : set G) : set G := 
+  let F := (λ a:{x//A x}×bool, if a.snd = tt then a.fst.val else a.fst.val⁻¹) in 
+  {x | ∃ L : list ({x//A x}×bool), x = prod_all L F}
+
+lemma engendre_est_sous_groupe {G : groupe} (A : set G)
+  : est_sous_groupe (sous_groupe_engendre A) :=
+begin
+  split; unfold sous_groupe_engendre,
+  begin -- preuve que ∀ a ∈ sous_groupe_engendre A, a⁻¹ ∈ sous_groupe_engendre A
+    intros, unfold Inter at *,
+    intro B, exact B.property.left.left a (H B)
+  end, split, 
+  begin -- preuve que ∀ a b ∈ sous_groupe_engendre A, a*b ∈ sous_groupe_engendre A
+    intros, unfold Inter at *,
+    intro B, exact B.property.left.right.left a (H B) b (H_1 B)
   end,
-  inv_stab := 
-  begin
-    intros, cases H with dec_a ha, revert a, 
-    induction dec_a with a' l hrec,
-      intros a ha,  unfold prod_all at ha, apply Exists.intro [], unfold prod_all, 
-      have h1 : 1*a = 1, rw ha, exact G.neutre_gauche 1,
-      rw G.inv_unique h1,
-      
-      intros a ha, 
-      have hx : prod_all l F = prod_all l F, refl, 
-      have hy := hrec (prod_all l F) hx, 
-      cases hy with b L',
-      apply Exists.intro (b ++ [(⟨a'.fst, bnot a'.snd⟩ : {x// A x}×bool)]), 
-      rw mul_prod_of_concat _ _ _ G.neutre_gauche G.mul_assoc,
-      unfold prod_all, unfold prod_all at ha, 
-      rw ha, rw G.inv_of_mul, rw L', rw G.neutre_droite,
-      have a_is_a : a' = (⟨a'.fst, a'.snd⟩:{x// A x}×bool), exact prod.mk.eta.symm, 
-      have unf_ff : ∀ g, F ⟨g, bool.ff⟩ = g⁻¹, intro, refl,
-      have unf_tt : ∀ g, F ⟨g, bool.tt⟩ = g, intro, refl,
-      cases a'.snd; rw a_is_a; unfold bnot, 
-        {rw unf_ff, rw G.inv_involution, rw unf_tt},
-        {rw unf_tt, rw unf_ff}
-  end,
-  contient_neutre := by {apply Exists.intro [], unfold prod_all, refl,} 
-}
+  begin -- preuve que 1 ∈ sous_groupe_engendre A
+    unfold Inter, intro B, exact B.property.left.right.right
+  end
+end
+
+lemma engendre_est_sous_groupe₂ {G : groupe} (A : set G)
+  : est_sous_groupe (sous_groupe_engendre₂ A) :=
+let F := (λ a:{x//A x}×bool, if a.snd = tt then a.fst.val else a.fst.val⁻¹) in
+begin
+  unfold sous_groupe_engendre₂,
+  split,
+    begin -- Preuve que l'inverse est stable
+      intros, cases H with dec_a ha, revert a, 
+      induction dec_a with a' l hrec,
+        intros a ha,  unfold prod_all at ha, apply Exists.intro [], unfold prod_all, 
+        have h1 : 1*a = 1, rw ha, exact G.neutre_gauche 1,
+        rw G.inv_unique h1,
+        
+        intros a ha, 
+        have hx : prod_all l F = prod_all l F, refl, 
+        have hy := hrec (prod_all l F) hx, 
+        cases hy with b L',
+        apply Exists.intro (b ++ [(⟨a'.fst, bnot a'.snd⟩ : {x// A x}×bool)]), 
+        rw mul_prod_of_concat _ _ _ G.neutre_gauche G.mul_assoc,
+        unfold prod_all, unfold prod_all at ha, 
+        rw ha, rw G.inv_of_mul, rw L', rw G.neutre_droite,
+        cases a'.snd, 
+          {simp, rw G.inv_involution},
+          {simp}
+    end, split, 
+    begin -- Preuve que la multiplication est stable
+      intros, 
+      cases H with decomp_a ha, cases H_1 with decomp_b hb, 
+      apply Exists.intro (decomp_a ++ decomp_b), 
+      rw mul_prod_of_concat decomp_a decomp_b _ G.neutre_gauche G.mul_assoc, 
+      rw ←ha, rw ←hb,
+    end,
+    by {apply Exists.intro [], unfold prod_all, refl} -- G.neutre ∈ sous_groupe_engendre₂ A 
+end
+
+
+
 
 section
 
@@ -247,9 +263,6 @@ end
 
 
 
--- permet d'avoir accès à tous les théorèmes sous le même nom que la structure
--- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
-namespace groupe 
 
 
 theorem mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
