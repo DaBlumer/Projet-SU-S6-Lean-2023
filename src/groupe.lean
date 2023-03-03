@@ -295,42 +295,32 @@ lemma distingue_gde {G:groupe} {H : sous_groupe G} (dH : est_distingue H)
 
 lemma rel_gauche_refl {G : groupe} (H : sous_groupe G) (a : G) 
   : rel_gauche_mod H a a :=
-  sorry
+begin
+    apply Exists.intro (1:G), rw G.neutre_droite,
+    apply Exists.intro H.contient_neutre, refl,
+end
 
 lemma rel_gauche_symm {G : groupe} (H : sous_groupe G) (a b: G) 
   : rel_gauche_mod H a b → rel_gauche_mod H b a :=
-  sorry
+begin
+  intro hxy, cases hxy with g hg, cases hg with hg eg,
+  have ge := eg.symm, 
+  rw ← (G.mul_droite_div_droite a g b).symm at ge,
+  apply Exists.intro g⁻¹, apply Exists.intro (H.inv_stab g hg),
+  exact ge,
+end
 
 lemma rel_gauche_trans {G : groupe} (H: sous_groupe G) (a b c : G)
   : rel_gauche_mod H a b → rel_gauche_mod H b c → rel_gauche_mod H a c :=
-  sorry
+begin
+  intros hxy hyz, cases hxy with g hg, cases hyz with g₂ hg₂,
+  cases hg with hg eg, cases hg₂ with hg₂ eg₂, 
+  rw eg at eg₂, rw G.mul_assoc' _ g g₂ at eg₂,
+  apply Exists.intro (g*g₂), apply Exists.intro (H.mul_stab g hg g₂ hg₂),
+  exact eg₂,
+end
 
 
-@[instance] def rel_equivalence_gauche {G : groupe} (H : sous_groupe G) : setoid G := ⟨
-  rel_gauche_mod H,
-  begin
-    split,
-    begin
-    intro, apply Exists.intro (1:G), rw G.neutre_droite,
-    apply Exists.intro H.contient_neutre, refl
-    end,
-    split,
-    begin
-      intros x y hxy, cases hxy with g hg, cases hg with hg eg,
-      have ge := eg.symm, 
-      rw ← (G.mul_droite_div_droite x g y).symm at ge,
-      apply Exists.intro g⁻¹, apply Exists.intro (H.inv_stab g hg),
-      exact ge,   
-    end,
-    begin
-      intros x y z hxy hyz, cases hxy with g hg, cases hyz with g₂ hg₂,
-      cases hg with hg eg, cases hg₂ with hg₂ eg₂, 
-      rw eg at eg₂, rw G.mul_assoc' x g g₂ at eg₂,
-      apply Exists.intro (g*g₂), apply Exists.intro (H.mul_stab g hg g₂ hg₂),
-      exact eg₂,
-    end,
-  end
-⟩
 
 lemma distingue_rels_equiv { G : groupe} {H : sous_groupe G} 
   (dH : est_distingue H) : rel_gauche_mod H = rel_droite_mod H
