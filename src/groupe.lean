@@ -185,6 +185,8 @@ lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
   sorry
 
 lemma mul_assoc' (G : groupe) (a b c : G) : a * b * c = a * (b * c) := G.mul_assoc a b c
+lemma inv_gauche' (G : groupe) (a : G) : a⁻¹*a = 1 := G.inv_gauche a
+lemma neutre_gauche' (G : groupe) (a : G) : 1*a = a := G.neutre_gauche a
 
 def puissance {G: groupe} (x : G) (n : ℤ) : G :=
   begin
@@ -414,6 +416,22 @@ def inv_quotient_ {G : groupe} {H: sous_groupe G} (dH: est_distingue H)
   end
   )
 
+local notation `⟦`:max a`⟧@`:0 H := quot.mk (rel_gauche_mod H) a 
+
+lemma quot_of_mul_quot {G: groupe} {H: sous_groupe G} {dH : est_distingue H}
+  : ∀ a b : G, mul_quotient_ dH (⟦a⟧@H) (⟦b⟧@H) = ⟦a*b⟧@H :=
+begin
+  intros, unfold mul_quotient_, unfold mul_partielle_gauche_quotient_, refl, 
+end
+
+lemma existe_repr_of_quot {G : groupe} {H : sous_groupe G}
+  : ∀ X : quotient_gauche H, ∃ x : G, X = (⟦x⟧@H) :=
+begin
+  have : ∀ a : G, ∃ x : G, (⟦a⟧@H) = (⟦x⟧@H), intro, apply Exists.intro a, refl,
+  intro X, 
+  exact quot.ind this X, 
+end
+
 def groupe_quotient {G : groupe} (H : sous_groupe G) (dH : est_distingue H) : groupe :=
 {
  ens := quotient_gauche H,
@@ -422,10 +440,26 @@ def groupe_quotient {G : groupe} (H : sous_groupe G) (dH : est_distingue H) : gr
  neutre := quot.mk (rel_gauche_mod H) 1,
  inv_gauche := 
  begin
-  intro, unfold mul_quotient_, unfold inv_quotient_, 
+  intro X, -- On introduit un élément X du groupe quotient
+  cases existe_repr_of_quot X with g hg, rw hg, -- On choisit un représentant 
+  unfold inv_quotient_, -- L'inverse de ⟦g⟧ est défini comme ⟦g⁻¹⟧
+  rw← G.inv_gauche' g, -- On remplace ⟦1⟧ par ⟦g⁻¹*g⟧
+  rw← quot_of_mul_quot g⁻¹ g, -- On remplace ⟦g⁻¹*g⟧ par ⟦g⟧*⟦g⁻¹⟧ et c'est fini
  end,
- mul_assoc := sorry, 
- neutre_gauche := sorry,
+ mul_assoc :=
+ begin
+  repeat {intro X, cases existe_repr_of_quot X,}, -- On introduit les 3 elems, et on choisit 3 représentants
+  rw [h, h_1, h_2], -- On remplace les élements avec leur écriture en fonction des représentants
+  repeat {rw quot_of_mul_quot,}, -- On utilise la règle : ⟦a⟧*⟦b⟧=⟦a*b⟧ plusieurs fois
+  rw G.mul_assoc', -- Enfin, on applique l'associativité sur G
+ end, 
+ neutre_gauche :=
+ begin
+  intro X, 
+  cases existe_repr_of_quot X with g hg, rw hg,
+  rw quot_of_mul_quot,
+  rw G.neutre_gauche', 
+ end,
 }
 
 
