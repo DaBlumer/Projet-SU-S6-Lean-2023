@@ -291,21 +291,22 @@ local notation H ` .% `:35 G:34 := rel_droite_mod H
 
 
 lemma distingue_gde {G:groupe} {H : sous_groupe G} (dH : est_distingue H)
-  : rel_gauche_mod H = rel_droite_mod H :=
+  : (G %. H) = (H .% G) :=
   begin
-    unfold rel_droite_mod, rw rel_gauche_mod, unfold est_distingue at dH,
+    unfold rel_droite_mod, 
+    rw rel_gauche_mod, unfold est_distingue at dH,
     apply funext, intro, apply funext, intro y,  rw dH, 
   end
 
 lemma rel_gauche_refl {G : groupe} (H : sous_groupe G) (a : G) 
-  : rel_gauche_mod H a a :=
+  : (G %. H) a a :=
 begin
     apply Exists.intro (1:G), rw G.neutre_droite,
     apply Exists.intro H.contient_neutre, refl,
 end
 
 lemma rel_gauche_symm {G : groupe} (H : sous_groupe G) (a b: G) 
-  : rel_gauche_mod H a b → rel_gauche_mod H b a :=
+  : (G %. H) a b →  (G %. H) b a :=
 begin
   intro hxy, cases hxy with g hg, cases hg with hg eg,
   have ge := eg.symm, 
@@ -315,7 +316,7 @@ begin
 end
 
 lemma rel_gauche_trans {G : groupe} (H: sous_groupe G) (a b c : G)
-  : rel_gauche_mod H a b → rel_gauche_mod H b c → rel_gauche_mod H a c :=
+  : (G %. H) a b → (G %. H) b c → (G %. H) a c :=
 begin
   intros hxy hyz, cases hxy with g hg, cases hyz with g₂ hg₂,
   cases hg with hg eg, cases hg₂ with hg₂ eg₂, 
@@ -327,12 +328,12 @@ end
 
 
 lemma distingue_rels_equiv { G : groupe} {H : sous_groupe G} 
-  (dH : est_distingue H) : rel_gauche_mod H = rel_droite_mod H
+  (dH : est_distingue H) : (G %. H) = (H .% G)
   := sorry
 
 lemma mul_induite_bien_def {G: groupe} {H: sous_groupe G} (dH: est_distingue H)
-  {a b c d : G} (rac : rel_gauche_mod H a c) (rbd : rel_gauche_mod H b d)
-  : rel_gauche_mod H (a*b) (c*d) :=
+  {a b c d : G} (rac : (G %. H) a c) (rbd : (G %. H) b d)
+  : (G %. H) (a*b) (c*d) :=
 begin
   intros, cases rac with h₁ eq₁, cases rbd with h₂ eq₂,
   cases eq₁ with a₁ eq₁, cases eq₂ with a₂ eq₂,
@@ -358,59 +359,61 @@ begin
 end  
 
 def quotient_gauche {G : groupe} (H : sous_groupe G) 
-  := quot (rel_gauche_mod H)
+  := quot (G %. H)
 def quotient_droite {G : groupe} (H : sous_groupe G)
+  := quot (H .% G)
 
 instance g_has_quotient_gauche {G: groupe}  : has_quotient_gauche G (sous_groupe G)
   := ⟨λ H, quotient_gauche H⟩
 instance g_has_quotient_droite {G: groupe} : has_quotient_droite G (sous_groupe G)
   := ⟨λ H, quotient_droite H⟩
+def x (G : groupe) (H : sous_groupe G) := G/.H 
 
 def mul_partielle_gauche_ {G : groupe} {H : sous_groupe G} (a : G)
-  : G → (quotient_gauche H) :=
-  λ b, quot.mk (rel_gauche_mod H) (a*b)
+  : G → (G/.H) :=
+  λ b, quot.mk (G %. H) (a*b)
 
 def mul_partielle_gauche_quotient_ {G: groupe} (H: sous_groupe G) {dH: est_distingue H} (a : G)
-  : (quotient_gauche H) → (quotient_gauche H) :=
-  @quot.lift G (rel_gauche_mod H) (quotient_gauche H) (mul_partielle_gauche_ a) (λ b c, 
+  : (G/.H) → (G/.H) :=
+  @quot.lift G (G %. H) (G/.H) (mul_partielle_gauche_ a) (λ b c, 
     begin
       intro h, 
-      have h₂ : (rel_gauche_mod H) a a, exact rel_gauche_refl H a, 
-      have : (rel_gauche_mod H) (a*b) (a*c), exact mul_induite_bien_def dH h₂ h,
+      have h₂ : (G %. H) a a, exact rel_gauche_refl H a, 
+      have : (G %. H) (a*b) (a*c), exact mul_induite_bien_def dH h₂ h,
       unfold mul_partielle_gauche_, 
       rw quot.sound this, 
     end
   )
 
 def mul_quotient_ {G: groupe} {H: sous_groupe G} (dH : est_distingue H)
-  : (quotient_gauche H) → (quotient_gauche H) → (quotient_gauche H) :=
-  @quot.lift G (rel_gauche_mod H) (quotient_gauche H → quotient_gauche H) 
+  : (G /. H) → (G /. H) → (G /. H) :=
+  @quot.lift G (G %. H) (G/.H → G/.H) 
    (@mul_partielle_gauche_quotient_ G H dH) (λ a b, 
   begin
     intro h, unfold mul_partielle_gauche_quotient_,
     have :  @mul_partielle_gauche_ G H a  = mul_partielle_gauche_ b, 
     apply funext, intro, unfold mul_partielle_gauche_, 
-    have h₂ : (rel_gauche_mod H) x x, exact rel_gauche_refl H x,
-    have : (rel_gauche_mod H) (a*x) (b*x), exact mul_induite_bien_def dH h h₂,
+    have h₂ : (G %. H) x x, exact rel_gauche_refl H x,
+    have : (G %. H) (a*x) (b*x), exact mul_induite_bien_def dH h h₂,
     rw quot.sound this, 
     simp only [this], 
   end
   )
 
 def inv_quotient_ {G : groupe} {H: sous_groupe G} (dH: est_distingue H) 
-  : (quotient_gauche H) → (quotient_gauche H) :=
-  @quot.lift G (rel_gauche_mod H) (quotient_gauche H) (λ g, quot.mk (rel_gauche_mod H) g⁻¹) 
+  : (G/.H) → (G/.H) :=
+  @quot.lift G (G %. H) (G /. H) (λ g, quot.mk (G%.H) g⁻¹) 
   (λ a b, 
   begin
     intro h, simp, 
-    have t₁ : rel_gauche_mod H b⁻¹ a⁻¹, 
+    have t₁ : (G %. H) b⁻¹ a⁻¹, 
       cases h with h₁ a₁, cases a₁ with a₁ eq₁, 
       rw ← G.inv_involution a at eq₁, rw ← G.mul_gauche_div_gauche at eq₁, 
       rw G.mul_droite_div_droite at eq₁, 
-      have : rel_droite_mod H b⁻¹ a⁻¹,
+      have : (H .% G) b⁻¹ a⁻¹,
         apply Exists.intro h₁, apply Exists.intro a₁, assumption,
       rw distingue_gde dH, assumption, 
-    have : rel_gauche_mod H a⁻¹ b⁻¹, 
+    have : (G %. H) a⁻¹ b⁻¹, 
       exact rel_gauche_symm H b⁻¹ a⁻¹ t₁, 
     exact quot.sound this, 
   end
@@ -425,7 +428,7 @@ begin
 end
 
 lemma existe_repr_of_quot {G : groupe} {H : sous_groupe G}
-  : ∀ X : quotient_gauche H, ∃ x : G, X = (⟦x⟧@H) :=
+  : ∀ X : (G/.H), ∃ x : G, X = (⟦x⟧@H) :=
 begin
   have : ∀ a : G, ∃ x : G, (⟦a⟧@H) = (⟦x⟧@H), intro, apply Exists.intro a, refl,
   intro X, 
@@ -434,12 +437,12 @@ end
 
 def groupe_quotient {G : groupe} (H : sous_groupe G) (dH : est_distingue H) : groupe :=
 {
- ens := quotient_gauche H,
+ ens := G /. H,
  mul := mul_quotient_ dH,
  inv := inv_quotient_ dH,
- neutre := quot.mk (rel_gauche_mod H) 1,
+ neutre := quot.mk (G %. H) 1,
  inv_gauche := 
- begin
+ begin 
   intro X, -- On introduit un élément X du groupe quotient
   cases existe_repr_of_quot X with g hg, rw hg, -- On choisit un représentant 
   unfold inv_quotient_, -- L'inverse de ⟦g⟧ est défini comme ⟦g⁻¹⟧
