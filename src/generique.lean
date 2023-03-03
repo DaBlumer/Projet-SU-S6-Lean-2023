@@ -28,8 +28,12 @@ begin
   rw list.cons_append, unfold prod_all, rw l₁_ih, rw mul_assoc, 
 end
 
+class {u v} has_quotient_gauche (A : out_param (Type u)) (B : Type v) :=
+  (quotient : B → Type max u v)
+class {u v} has_quotient_droite (A : out_param (Type u)) (B : Type v) :=
+  (quotient : B → Type max u v)
 
-def classes_equivalence {α : Type*} (r : setoid α ) : set (set α)
-  := {A | ∃ x, A = {y | r.r x y}}
+notation G ` /. `:35 H:34 := has_quotient_gauche.quotient H
+notation H ` .\ `:35 H:34 := has_quotient_droite.quotient H
 
 end generique

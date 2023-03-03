@@ -286,6 +286,10 @@ def rel_gauche_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
 def rel_droite_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
   λ x y : G, y ∈ mul_droite_ens ↑H x 
 
+local notation G ` %. `:35 H:34 := rel_gauche_mod H
+local notation H ` .% `:35 G:34 := rel_droite_mod H
+
+
 lemma distingue_gde {G:groupe} {H : sous_groupe G} (dH : est_distingue H)
   : rel_gauche_mod H = rel_droite_mod H :=
   begin
@@ -355,6 +359,12 @@ end
 
 def quotient_gauche {G : groupe} (H : sous_groupe G) 
   := quot (rel_gauche_mod H)
+def quotient_droite {G : groupe} (H : sous_groupe G)
+
+instance g_has_quotient_gauche {G: groupe}  : has_quotient_gauche G (sous_groupe G)
+  := ⟨λ H, quotient_gauche H⟩
+instance g_has_quotient_droite {G: groupe} : has_quotient_droite G (sous_groupe G)
+  := ⟨λ H, quotient_droite H⟩
 
 def mul_partielle_gauche_ {G : groupe} {H : sous_groupe G} (a : G)
   : G → (quotient_gauche H) :=
