@@ -16,12 +16,15 @@ end
 
 
 -- Un ensemble E est fini si il existe une injection de E dans ⟦0, n-1⟧ pour un certain n
-def est_fini (E : Type*) : Prop := 
-  ∃ n : ℕ, ∃ f : E → fin n, function.injective f
+class est_fini (E : Type*) := 
+  (majorant : ℕ)
+  (f : E → fin majorant)
+  (f_inj : function.injective f)
 
-theorem fini_ssi_surjectable (E : Type*)
-  : est_fini E ↔ ∃ n : ℕ, ∃ g : fin n → E, function.surjective g :=
-  sorry
+
+class cardinal' (E : Type*) :=
+  (card : ℕ)
+  (bij : bijections E (fin card))
 
 def cardinal_est (E : Type*) (n : ℕ) : Prop :=
   nonempty (bijections E (fin n)) 
@@ -30,14 +33,15 @@ def cardinal_est (E : Type*) (n : ℕ) : Prop :=
 section -- On a besoin du principe du tiers exclu pour montrer ça
 open classical
 local attribute [instance, priority 10] prop_decidable
-theorem fini_a_cardinal_fini {E : Type*} (h : est_fini E) : ∃ n, cardinal_est E n :=
+
+
+noncomputable def fini_a_cardinal_fini (E : Type*) [h : est_fini E] : cardinal' E :=
 begin
-  cases h with n hn,
+  unfreezingI { cases h with n f hf },
   induction n with m hm, 
     {
-      apply Exists.intro 0,
-      cases hn with f hf, 
-      apply nonempty.intro,
+      apply cardinal'.mk 0,
+      --cases hn with f hf, 
       let inv_f : fin 0 → E := λ n,
         by  {apply false.elim, exact nat.not_lt_zero n.val n.property},
       apply bijections.mk f inv_f; intro; apply false.elim,
@@ -45,12 +49,12 @@ begin
         {exact nat.not_lt_zero (f (inv_f x)).val (f (inv_f x)).property }
     },
     {
-      cases hn with f hf,
+      --cases hn with f hf,
       exact (
-        if h : (∃ k : fin m.succ, ∀ e, f e ≠ k) then
+        if h : nonempty {k : fin m.succ // ∀ e, f e ≠ k} then
         begin
-          apply hm, 
-          cases h with k hk, 
+          --apply hm, 
+          cases (@arbitrary {k // ∀ e, f e ≠ k} (inhabited_of_nonempty h)) with k hk, 
           cases k with kv kp,
           exact (
             if h2 : (kv = m) then
@@ -62,8 +66,8 @@ begin
                 cases (nat.eq_or_lt_of_le h3) with il ir,
                   exfalso, exact hke (by {apply fin.eq_of_veq, simp [h2, il]}),
                   assumption, 
-              end⟩,
-              apply Exists.intro f', intros a b hab, 
+              end⟩, 
+              apply hm f', intros a b hab, 
               have hab' := fin.eq_of_veq (fin.mk.inj hab),
               exact hf hab',  
             end
@@ -78,7 +82,7 @@ begin
                   end⟩
                 else
                   ⟨(f e).val, nat.lt_of_le_and_ne (nat.le_of_lt_succ(f e).property) hfe⟩,
-              apply Exists.intro f', intros a b hab, 
+              apply hm f', intros a b hab, 
               cases eq.decidable (f a).val m with df dt,
               {
                 have a' : (f' a).val = (f a).val, simp [df, f'],
@@ -118,14 +122,14 @@ begin
         end
         else 
         begin
-          apply Exists.intro m.succ, unfold cardinal_est, apply nonempty.intro, 
+          apply cardinal'.mk m.succ,
           have surjf : ∀ k, inhabited  {e// f e = k},
             intro k, 
             cases prop_decidable (nonempty {e // (f e) = k}) with exi nexi,
             {
               exfalso,
               have : ∀ e', f e' ≠ k, intro e', intro fek, exact exi ⟨⟨e', fek⟩⟩, 
-              exact h ⟨k, this⟩,  
+              exact h ⟨⟨k, this⟩⟩,  
             },
             exact classical.inhabited_of_nonempty nexi, -- CLASSICAL  
           let f_inv : fin m.succ → E := λ ki, 
@@ -144,21 +148,43 @@ begin
         end
       ),
     }
-
 end
 
+noncomputable def cardinal (E : Type*) [h : est_fini E] : ℕ := (fini_a_cardinal_fini E).card
 
 universe u
 instance set_to_type {E : Type u} : has_coe (set E) (Type u) := ⟨λ S, {x//S x}⟩
 
-variables (E F : Type u) {n m : ℕ} {h : cardinal_est E n} {h' : cardinal_est F m} (E' E'' : set E)
+variables (E F : Type u) {n m : ℕ} [h : est_fini E] [h' : est_fini F] (E' E'' : set E)
 
-theorem prod_of_cards 
-  : cardinal_est (E×F) (n*m) :=
+
+
+@[instance]
+def prod_card_fini : est_fini (E×F) :=
+  {
+    majorant := h.majorant*h'.majorant,
+    f := λ ⟨e,f⟩, ⟨h'.majorant * (h.f e).val + (h'.f f).val,
+      begin
+        sorry 
+          
+      end⟩,
+    f_inj := sorry 
+  }
+
+@[instance]
+def func_card_fini : est_fini (E → F) :=
+  {
+    majorant := h'.majorant ^ h.majorant,
+    f := sorry,
+    f_inj := sorry 
+  }
+
+theorem prod_of_cards [h : est_fini E] [h' : est_fini F]
+  : cardinal (E×F) = (cardinal E) * (cardinal F) :=
   sorry
 
-theorem card_of_func 
-  : cardinal_est (E → F) (m^n) :=
+theorem card_of_func [h : est_fini E] [h' : est_fini F]
+  : cardinal (E→F) = cardinal F ^ cardinal E :=
   sorry
 
 
