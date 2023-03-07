@@ -14,6 +14,10 @@ notation `⋂` binders `,` expr_i:(scoped f, Inter f) := expr_i
 
 instance {α : Type*} : has_subset (set α) :=
   ⟨λ A B, ∀ a ∈ A, a ∈ B ⟩
+instance {α : Type*} : has_union (set α) :=
+  ⟨λ A B, {x | x ∈ A ∨ x ∈ B}⟩
+instance {α : Type*} : has_inter (set α) :=
+  ⟨λ A B, {x | x ∈ A ∧ x ∈ B}⟩
 
 def prod_all {α : Type*} {β : Type*} [has_mul β] [has_one β] : (list α) → (α → β) →  β
   | [] _ := (1 : β)
@@ -35,5 +39,11 @@ class {u v} has_quotient_droite (A : out_param (Type u)) (B : Type v) :=
 
 notation G ` /. `:35 H:34 := has_quotient_gauche.quotient H
 notation H ` .\ `:35 H:34 := has_quotient_droite.quotient H
+
+def nat_pow (n : ℕ) : ℕ → ℕ
+  | 0 := 1
+  | (nat.succ k) := n*(nat_pow k)
+
+instance nat_has_pow : has_pow ℕ ℕ := ⟨nat_pow⟩
 
 end generique

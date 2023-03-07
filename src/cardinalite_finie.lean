@@ -2,6 +2,9 @@
 Fichier définissant la cardinalité des types finis 
 -/
 
+import .generique
+open generique
+
 section
 universes u v
 structure bijections (E: Type u) (F : Type v) :=
@@ -144,14 +147,19 @@ begin
 
 end
 
-variables {E F : Type*} {n m : ℕ} (h : cardinal_est E n) (h' : cardinal_est F m)
+
+universe u
+instance set_to_type {E : Type u} : has_coe (set E) (Type u) := ⟨λ S, {x//S x}⟩
+
+variables (E F : Type u) {n m : ℕ} {h : cardinal_est E n} {h' : cardinal_est F m} (E' E'' : set E)
 
 theorem prod_of_cards 
   : cardinal_est (E×F) (n*m) :=
   sorry
 
---theorem card_of_func 
---  : cardinal_est (E → F) (m^n)
---  sorry
+theorem card_of_func 
+  : cardinal_est (E → F) (m^n) :=
+  sorry
+
 
 end -- section utilisant classical
