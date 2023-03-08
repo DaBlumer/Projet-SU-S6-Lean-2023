@@ -505,16 +505,20 @@ def ens_reciproque {G H : groupe} (f : morphisme G H) (B: set H) :=
 def ens_image {G H : groupe} (f : morphisme G H) (A: set G) :=
   {b : H | ∃ a ∈ A, f a = b}
 
-def comp {G H K: groupe} (f : morphisme G H) (g : morphisme H K) : morphisme G K := 
-  sorry
+def comp_mor {G H K: groupe} (g : morphisme H K) (f : morphisme G H) : morphisme G K := 
+  {
+    mor := g.mor∘f.mor,
+    resp_mul := λ g₁ g₂, by {simp, rw [f.resp_mul, g.resp_mul]} 
+  }
 
+local notation g `∘₁`:10 f := comp_mor g f
 
 theorem ker_comp_eq_inv_ker {G H K: groupe} (f : morphisme G H) (g : morphisme H K) 
-  : ker (comp f g) = ens_reciproque f (ker g) :=
+  : ker (g ∘₁ f) = ens_reciproque f (ker g) :=
   sorry
 
 theorem im_comp_eq_im_im {G H K: groupe} (f : morphisme G H) (g : morphisme H K) 
-  : im (comp f g) = ens_image g (im f) :=
+  : im (g ∘₁ f) = ens_image g (im f) :=
   sorry 
 
 
