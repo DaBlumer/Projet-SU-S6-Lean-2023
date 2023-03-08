@@ -148,13 +148,19 @@ end -- fin exemples
 -- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
 namespace groupe
 
+lemma mul_assoc' (G : groupe) (a b c : G) : a * b * c = a * (b * c) := G.mul_assoc a b c
+lemma inv_gauche' (G : groupe) (a : G) : a⁻¹*a = 1 := G.inv_gauche a
+lemma neutre_gauche' (G : groupe) (a : G) : 1*a = a := G.neutre_gauche a
 
 lemma neutre_droite (G : groupe) : ∀ a : G.ens, a*1 = a :=
  sorry
 
+lemma neutre_droite' (G : groupe) (a : G) : a*1 = a := G.neutre_droite a
+
 lemma inv_droite (G: groupe) : ∀ a : G.ens, a * a⁻¹ = 1 :=
   sorry
 
+lemma inv_droite' (G : groupe) (a : G) : a*a⁻¹ = 1 := G.inv_droite a
 
 lemma neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   begin
@@ -173,20 +179,51 @@ lemma inv_involution (G : groupe) (a : G) : (a⁻¹)⁻¹ = a :=
   sorry
 
 lemma mul_droite_div_droite (G : groupe) (a b c : G) : a * b = c ↔ a = c * b⁻¹ :=
-  sorry
+  begin
+  split,
+  intro h,
+  rw ← h,
+  rw mul_assoc' G a b b⁻¹,
+  rw inv_droite' G b,
+  rw neutre_droite',
+  intro h,
+  rw h,
+  rw mul_assoc' G c b⁻¹ b,
+  rw inv_gauche',
+  rw neutre_droite,
+  end
 
 lemma mul_gauche_div_gauche (G : groupe) (a b c : G) : a * b = c ↔ b = a⁻¹ * c :=
-  sorry
+  begin
+  split,
+  intro h,
+  rw ← h,
+  rw ← mul_assoc' G a⁻¹ a b,
+  rw inv_gauche' G a,
+  rw neutre_gauche',
+  intro h,
+  rw h,
+  rw ← mul_assoc',
+  rw inv_droite',
+  rw neutre_gauche',
+  end
 
 lemma mul_droite_all (G : groupe) (a b c : G) : a=b ↔ a*c = b*c :=
-  sorry
+  begin
+  split,
+  intro h,
+  rw h,
+  sorry  --il faut multiplier dans l'hypothese par c^-1 mais je sais pas comment faire
+  end
 
 lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
+  begin
+  split,
+  intro h,
+  rw h,
   sorry
+  end
 
-lemma mul_assoc' (G : groupe) (a b c : G) : a * b * c = a * (b * c) := G.mul_assoc a b c
-lemma inv_gauche' (G : groupe) (a : G) : a⁻¹*a = 1 := G.inv_gauche a
-lemma neutre_gauche' (G : groupe) (a : G) : 1*a = a := G.neutre_gauche a
 
 def puissance {G: groupe} (x : G) (n : ℤ) : G :=
   begin
@@ -505,20 +542,16 @@ def ens_reciproque {G H : groupe} (f : morphisme G H) (B: set H) :=
 def ens_image {G H : groupe} (f : morphisme G H) (A: set G) :=
   {b : H | ∃ a ∈ A, f a = b}
 
-def comp_mor {G H K: groupe} (g : morphisme H K) (f : morphisme G H) : morphisme G K := 
-  {
-    mor := g.mor∘f.mor,
-    resp_mul := λ g₁ g₂, by {simp, rw [f.resp_mul, g.resp_mul]} 
-  }
+def comp {G H K: groupe} (f : morphisme G H) (g : morphisme H K) : morphisme G K := 
+  sorry
 
-local notation g `∘₁`:10 f := comp_mor g f
 
 theorem ker_comp_eq_inv_ker {G H K: groupe} (f : morphisme G H) (g : morphisme H K) 
-  : ker (g ∘₁ f) = ens_reciproque f (ker g) :=
+  : ker (comp f g) = ens_reciproque f (ker g) :=
   sorry
 
 theorem im_comp_eq_im_im {G H K: groupe} (f : morphisme G H) (g : morphisme H K) 
-  : im (g ∘₁ f) = ens_image g (im f) :=
+  : im (comp f g) = ens_image g (im f) :=
   sorry 
 
 
