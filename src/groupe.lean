@@ -213,7 +213,9 @@ lemma mul_droite_all (G : groupe) (a b c : G) : a=b ↔ a*c = b*c :=
   split,
   intro h,
   rw h,
-  sorry  --il faut multiplier dans l'hypothese par c^-1 mais je sais pas comment faire
+  intro h, rw mul_droite_div_droite at h,
+  rw  [mul_assoc', inv_droite', neutre_droite'] at h, 
+  exact h,  --il faut multiplier dans l'hypothese par c^-1 mais je sais pas comment faire
   end
 
 lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
@@ -300,6 +302,9 @@ begin
     end,
     by {apply Exists.intro [], unfold prod_all, refl} -- G.neutre ∈ sous_groupe_engendre₂ A 
 end
+
+
+--def est_cyclique (G : groupe ) : ∃ x:G, (sous_groupe_engendre {x}).ens = G.ens
 
 def mul_gauche_ens {G : groupe} (a : G) (H : set G) : set G :=
   {g : G | ∃ h ∈ H, g = a*h}
@@ -529,6 +534,25 @@ theorem mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
 theorem mor_inv_inv_mor {G H : groupe} {f : morphisme G H}  (a : G) : f a⁻¹ =  (f a)⁻¹ :=
   sorry
 
+
+def est_isomorphisme {G H : groupe} (f : morphisme G H) : Prop :=
+  ∃ (g : morphisme H G), g.mor ∘ f.mor = id ∧ f.mor ∘ g.mor = id
+
+def End (G : groupe) := morphisme G G
+structure Aut (G : groupe) :=
+  (f: morphisme G G)
+  (h: est_isomorphisme f)
+
+def aut_int {G: groupe} (g : G) : morphisme G G :=
+  { mor:= λ h, g*h*g⁻¹,
+    resp_mul := sorry,
+  }
+    
+
+lemma aut_int_est_iso {G: groupe} (g : G) : est_isomorphisme (aut_int g) :=
+  sorry
+
+def Int (G: groupe) := {f // ∃ g:G , f = aut_int g } 
 
 def ker {G H : groupe} (f : morphisme G H) : set G :=
   {a : G.ens | f a = 1}
