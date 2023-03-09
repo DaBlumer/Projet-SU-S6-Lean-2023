@@ -170,13 +170,22 @@ lemma neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   end
 
 lemma inv_unique (G: groupe) {a : G} {b : G} (h: b*a = 1) : b = a⁻¹ :=
-  sorry
-
-lemma inv_of_mul (G: groupe) (a b : G) : (a*b)⁻¹ = b⁻¹ * a⁻¹ :=
-  sorry
+  begin
+  rw ← neutre_droite' G b,
+  rw ← inv_droite' G a,
+  rw ← mul_assoc',
+  rw h,
+  rw neutre_gauche',
+  end
 
 lemma inv_involution (G : groupe) (a : G) : (a⁻¹)⁻¹ = a :=
-  sorry
+  begin
+  rw ← neutre_droite' G a⁻¹⁻¹,
+  rw ← inv_gauche' G a,
+  rw ← mul_assoc',
+  rw inv_gauche' G a⁻¹,
+  rw neutre_gauche',
+  end
 
 lemma mul_droite_div_droite (G : groupe) (a b c : G) : a * b = c ↔ a = c * b⁻¹ :=
   begin
@@ -208,14 +217,24 @@ lemma mul_gauche_div_gauche (G : groupe) (a b c : G) : a * b = c ↔ b = a⁻¹ 
   rw neutre_gauche',
   end
 
+lemma inv_of_mul (G: groupe) (a b : G) : (a*b)⁻¹ = b⁻¹ * a⁻¹ :=
+  begin
+  rw ← mul_gauche_div_gauche,
+  rw ← neutre_droite' G a⁻¹,
+  rw ← mul_gauche_div_gauche,
+  rw ← mul_assoc',
+  rw inv_droite,
+  end
+
 lemma mul_droite_all (G : groupe) (a b c : G) : a=b ↔ a*c = b*c :=
   begin
   split,
   intro h,
   rw h,
-  intro h, rw mul_droite_div_droite at h,
+  intro h,
+  rw mul_droite_div_droite at h,
   rw  [mul_assoc', inv_droite', neutre_droite'] at h, 
-  exact h,  --il faut multiplier dans l'hypothese par c^-1 mais je sais pas comment faire
+  exact h,
   end
 
 lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
@@ -223,7 +242,12 @@ lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
   split,
   intro h,
   rw h,
-  sorry
+  intro h,
+  rw mul_gauche_div_gauche at h,
+  rw ← mul_assoc' at h,
+  rw h,
+  rw inv_gauche',
+  rw neutre_gauche'
   end
 
 
@@ -545,7 +569,17 @@ structure Aut (G : groupe) :=
 
 def aut_int {G: groupe} (g : G) : morphisme G G :=
   { mor:= λ h, g*h*g⁻¹,
-    resp_mul := sorry,
+    resp_mul := 
+    begin
+    intro a,
+    intro b,
+    rw ← mul_assoc' G (g*a*g⁻¹) (g * b) g⁻¹,
+    rw ←  mul_assoc' G (g*a*g⁻¹) g  b,
+    rw mul_assoc' G (g*a) g⁻¹ g,
+    rw inv_gauche',
+    rw neutre_droite',
+    rw mul_assoc' G g a b,    
+    end
   }
     
 
