@@ -12,8 +12,53 @@ structure bijections (E: Type u) (F : Type v) :=
   (f_inv : F → E)
   (inv_gauche : function.left_inverse f_inv f)
   (inv_droite : function.right_inverse f_inv f)
+
+def bijections' (E : Type u) (F : Type v) :=
+  {f : E → F // function.bijective f}
+
 end
 
+def bijection'_of_bijection {E : Type*} {F : Type*} (bij : bijections E F) 
+  : bijections' E F := ⟨bij.f, 
+  begin 
+    split, 
+      {
+        intros a b h,
+        have h₂: bij.f_inv (bij.f a) = bij.f_inv (bij.f b), rw h, 
+        repeat {rw bij.inv_gauche at h₂},
+        exact h₂
+      },
+      {
+        intro b,
+        apply Exists.intro (bij.f_inv b),
+        exact bij.inv_droite _, 
+      },
+  end⟩ 
+
+
+
+noncomputable def bijection_of_bijection' {E: Type*} {F: Type*} (bij' : bijections' E F) 
+  : bijections E F := 
+  {
+    f := bij'.val,
+    f_inv := λ e, (choose (bij'.property.2 e)).val,
+    inv_gauche :=
+      begin
+        intro,
+        simp, 
+        have h₁ := prop_of_choose (bij'.property.2 (bij'.val x)),
+        apply bij'.property.1, 
+        exact h₁,
+      end,
+    inv_droite := 
+      begin
+        intro,
+        simp, 
+        exact prop_of_choose (bij'.property.2 x), 
+      end, 
+  }   
+
+def permutations (E : Type*) := bijections' E E 
 
 -- Un ensemble E est fini si il existe une injection de E dans ⟦0, n-1⟧ pour un certain n
 class est_fini (E : Type*) := 

@@ -46,4 +46,21 @@ def nat_pow (n : ℕ) : ℕ → ℕ
 
 instance nat_has_pow : has_pow ℕ ℕ := ⟨nat_pow⟩
 
+
+
+theorem push_exists_prop {α : Type*} {p : α → Prop} (h : ∃ a, p a) 
+  : ∃ a : {a' // p a'}, true :=
+  begin
+    cases h with a ha, 
+    apply Exists.intro,
+    exact ⟨a, ha⟩,
+    apply true.intro,  
+  end
+
+noncomputable def choose {α : Type*} {p : α → Prop} (h : ∃ a, p a) : {a // p a} :=
+  (classical.inhabited_of_exists (push_exists_prop h)).default
+
+theorem prop_of_choose {α : Type*} {p : α → Prop} (h : ∃ a, p a)
+  : p (choose h).val := (choose h).property 
+
 end generique
