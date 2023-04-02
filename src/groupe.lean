@@ -2,6 +2,7 @@
 
 
 import .generique
+import .cardinalite_finie
 open generique
 
 
@@ -359,10 +360,10 @@ lemma mul_left_pow {G : groupe} {n : ℤ} (x : G) : (x ^ (n+1)) = x*(x^n) :=
 
 
 lemma mul_right_pow  {G : groupe} {n : ℤ} (x : G) : (x ^ (n+1)) = (x^n)*x :=
-  begin
+  begin 
     rw mul_left_pow,
     rw ← mul_of_z_pow_comm,
-  end 
+  end
 
 lemma pow_mul_pow {G : groupe} {n m : ℤ} (x : G) : (x^n)*(x^m) = x^(n+m) :=
   begin
@@ -449,6 +450,7 @@ begin
   end
 end
 
+
 lemma engendre_est_sous_groupe₂ {G : groupe} (A : set G)
   : est_sous_groupe (sous_groupe_engendre₂ A) :=
 let F := (λ a:{x//A x}×bool, if a.snd = tt then a.fst.val else a.fst.val⁻¹) in
@@ -481,11 +483,72 @@ begin
       rw mul_prod_of_concat decomp_a decomp_b _ G.neutre_gauche G.mul_assoc, 
       rw ←ha, rw ←hb,
     end,
-    by {apply Exists.intro [], unfold prod_all, refl} -- G.neutre ∈ sous_groupe_engendre₂ A 
+    by {apply Exists.intro [], unfold prod_all} -- G.neutre ∈ sous_groupe_engendre₂ A 
 end
 
 
---def est_cyclique (G : groupe ) : ∃ x:G, (sous_groupe_engendre {x}).ens = G.ens
+lemma engendre₂_contient_ens {G : groupe} (A : set G) :
+  A ⊆ sous_groupe_engendre₂ A :=
+begin
+  intros a h, 
+  unfold sous_groupe_engendre₂, simp, 
+  apply Exists.intro [prod.mk (⟨a, h⟩: {x//A x}) tt],
+  unfold prod_all, simp,
+  have : G.mul a 1 = a*1, refl, rw this, 
+  exact (G.neutre_droite a).symm, 
+end
+
+lemma engendre₂_est_engendre {G : groupe} (A : set G) :
+  sous_groupe_engendre A = sous_groupe_engendre₂ A :=
+begin
+  apply funext, intro, apply propext, split,
+  { -- sous_groupe_engendre A ⊆ sous_groupe_engendre₂ A 
+    intro h, 
+    unfold sous_groupe_engendre at h, unfold Inter at h, 
+    let good : {X' // est_sous_groupe X' ∧ A ⊆ X'} :=
+      ⟨sous_groupe_engendre₂ A, engendre_est_sous_groupe₂ A, engendre₂_contient_ens A⟩,
+    have h₃ := h good, 
+    simp at h₃, 
+    exact h₃,
+  },
+  {  -- sous_groupe_engendre₂ A ⊆ sous_groupe_engendre A 
+    intro h, 
+    unfold sous_groupe_engendre, intro, simp, 
+    unfold sous_groupe_engendre₂ at h, simp at h, 
+    cases h with L,
+    revert x, 
+    induction L with e L hR, 
+    { -- 1 appartient à tous les sous groupes contenant A 
+      intro x, intro hL, 
+      unfold prod_all at hL, rw hL, 
+      exact i.property.1.2.2,  
+    },
+    { -- Pour x_1,...,x_n ∈ A∪A⁻¹, x_1*x_2*...*x_n ∈ H pour tout H tq A ⊆ H < G   
+      intro x, intro hL, 
+      unfold prod_all at hL, 
+      cases e.snd, 
+      {
+        simp at hL, 
+        have h₀ : prod_all L (λ (a : {x // A x} × bool), ite (a.snd = tt) a.fst.val (a.fst.val)⁻¹) ∈ i.val, 
+          have := hR (prod_all L (λ (a : {x // A x} × bool), ite (a.snd = tt) a.fst.val (a.fst.val)⁻¹)),
+          apply this, refl, 
+        have h₁ : e.fst.val ∈ i.val := (i.property.2) e.fst e.fst.property,
+        have h₂ : (e.fst.val)⁻¹ ∈ i.val := i.property.1.1 _ h₁,
+        rw hL,  
+        exact i.property.1.2.1 _ h₂ _ h₀, 
+      }, 
+      {
+        simp at hL, 
+        have h₀ : prod_all L (λ (a : {x // A x} × bool), ite (a.snd = tt) a.fst.val (a.fst.val)⁻¹) ∈ i.val, 
+          have := hR (prod_all L (λ (a : {x // A x} × bool), ite (a.snd = tt) a.fst.val (a.fst.val)⁻¹)),
+          apply this, refl,
+        have h₁ : e.fst.val ∈ i.val := (i.property.2) e.fst e.fst.property,
+        rw hL,
+        exact i.property.1.2.1 _ h₁ _ h₀,
+      }
+    }
+  }
+end
 
 def mul_gauche_ens {G : groupe} (a : G) (H : set G) : set G :=
   {g : G | ∃ h ∈ H, g = a*h}
@@ -699,6 +762,137 @@ local attribute [instance, priority 10] prop_decidable
 noncomputable def ordre {G : groupe} (x : G) : ℕ :=
   if h : (∃ n : ℕ, x^(n:ℤ) = 1) then nat.find h else 0
 
+def singleton_generateur {G : groupe} (x : G) : Prop :=
+  @sous_groupe_engendre G {x} = set.univ
+
+def est_cyclique (G : groupe ) := 
+  ∃ x : G, singleton_generateur x
+
+
+lemma engendre_singleton {G : groupe} (x : G) : 
+  @sous_groupe_engendre G {x} = {y | ∃ k : ℤ, y = x^k}:=
+  begin
+    apply funext, 
+    intro g, 
+    apply propext, 
+    split, 
+    { --  Sens 1 : <x> ⊆ {x^k, k ∈ ℤ}  
+      intro h, 
+      rw engendre₂_est_engendre at h, 
+      unfold sous_groupe_engendre₂ at h, simp at h, 
+      cases h with L hL,
+      revert g, 
+      induction L with e L rL,
+      {
+        intros g hL, 
+        unfold prod_all at hL,
+        apply Exists.intro (0 : ℤ),
+        rw [hL, ← int.coe_nat_zero, ← coe_pow_nat, pow_zero_eq_one],
+      },
+      {
+        intros g hL,
+        unfold prod_all at hL,
+        have h₀ := rL (prod_all L (λ (a : {x_1 // ({x}:set G) x_1} × bool), ite (a.snd = tt) a.fst.val (a.fst.val)⁻¹)) rfl,
+        cases h₀ with k hk,
+        have h₁ : e.fst.val = x :=  e.fst.property, 
+        cases e.snd,
+        {
+          simp at hL, have : (∀ a b, G.mul a b = a*b) := by{intros a b, refl}, rw this at hL,
+          rw hk at hL, rw [hL, h₁],
+          apply Exists.intro (k-1),
+          rw [← pow_minus_one_eq_inv, pow_mul_pow], 
+          rw int.add_comm, rw int.sub_eq_add_neg,
+        },
+        {
+          simp at hL, have : (∀ a b, G.mul a b = a*b) := by{intros a b, refl}, rw this at hL,
+          rw hk at hL, rw [hL, h₁],
+          apply Exists.intro (k+1),
+          apply eq.symm,
+          exact mul_left_pow x, 
+        }
+      }
+    },
+    { -- Sens 2 : {x^k | k∈ℤ } ⊆ <x>
+      intro h,
+      cases h with k hk, 
+      revert g, 
+      have h_pos : ∀ g : G, ∀ n : ℕ, g = x ^ n → g ∈ sous_groupe_engendre ({x}:set G),
+      {
+        intros g n hn, revert g, 
+        induction n with d hd,
+          { -- x^0 = neutre ∈ <x>  
+            intros g hk, 
+            rw [pow_zero_eq_one] at hk,
+            rw hk, 
+            exact (engendre_est_sous_groupe ({x}:set G)).2.2,
+          },
+          { -- x^d avec d ≥ 1 
+            intros g hk, 
+            have h₀ := hd (x ^ (int.of_nat d)) rfl,
+            rw [coe_pow_nat, int.coe_nat_succ, mul_right_pow x] at hk,
+            rw ← int.coe_nat_eq at h₀,
+            have h₁ : x∈(sous_groupe_engendre ({x}:set G)),
+              rw engendre₂_est_engendre, 
+              have : x∈ ({x} : set G), unfold has_mem.mem, unfold singleton, unfold set_of, 
+              exact ((engendre₂_contient_ens {x}) x this),
+              rw hk,
+            exact ((engendre_est_sous_groupe {x}).2.1 _ h₀ _ h₁), 
+          }
+      },
+      induction k with n hn, 
+      {
+        rw ← int.coe_nat_eq, rw ← coe_pow_nat,
+        intros g hg, 
+        exact h_pos g n hg,
+      },
+      {
+        intros g hk,
+        unfold pow at hk, unfold puissance_z at hk, -- TODO: lemme x^(-n) = (x^n)⁻¹
+        have h : x ^ (hn + 1) ∈ sous_groupe_engendre ({x}:set G), 
+          apply h_pos (x^(hn + 1)) (hn + 1), refl, 
+        rw hk,  
+        exact ((engendre_est_sous_groupe {x}).1 _ h), 
+      }
+    }
+  end
+
+--lemma groupe_cyclique_forme {G : groupe} {x : G} (h : singleton_generateur x)
+--  : ∀ g, ∃ k : ℤ, g = x^k :=
+--  begin
+--    intro, 
+--
+--  end   
+
+@[instance] def ordre_fini_groupe_fini {G : groupe} {x : G} (h : ordre x ≠ 0)
+  : est_fini G :=
+begin
+  sorry 
+end
+
+
+--  : cardinal (subtype (sous_groupe_engendre ({x}:set G))) = (ordre x)
+
+/-def singleton_generateur {G : groupe} (x : G) : Prop :=
+  @sous_groupe_engendre G {x} = set.univ
+
+def est_cyclique (G : groupe ) := 
+  ∃ x : G, singleton_generateur x
+
+@[instance]
+def groupe_cyclique_fini {G : groupe} {x : G}
+  (h₁ : singleton_generateur x) (h₂ : ordre x > 0)
+  : est_fini G := 
+  {
+    majorant := ordre x,
+    f := λ g,  
+  }
+lemma card_groupe_cyclique_fini {G : groupe} {x : G} {n : ℕ} 
+  (h₁ : singleton_generateur x) (h₂ : ordre x > 0)
+  : cardinal G = ordre x :=
+  sorry 
+
+--lemma card_groupe_cyclique {G : groupe} (h: est_cyclique G)
+--  : cardinal (G)-/
 
 end
 /-******************************Fin Définitions et coercions de base *****************************-/
