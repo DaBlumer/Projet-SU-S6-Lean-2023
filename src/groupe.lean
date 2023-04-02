@@ -153,15 +153,26 @@ lemma mul_assoc' (G : groupe) (a b c : G) : a * b * c = a * (b * c) := G.mul_ass
 lemma inv_gauche' (G : groupe) (a : G) : a⁻¹*a = 1 := G.inv_gauche a
 lemma neutre_gauche' (G : groupe) (a : G) : 1*a = a := G.neutre_gauche a
 
-lemma neutre_droite (G : groupe) : ∀ a : G.ens, a*1 = a :=
- sorry
 
-lemma neutre_droite' (G : groupe) (a : G) : a*1 = a := G.neutre_droite a
 
 lemma inv_droite (G: groupe) : ∀ a : G.ens, a * a⁻¹ = 1 :=
   sorry
 
 lemma inv_droite' (G : groupe) (a : G) : a*a⁻¹ = 1 := G.inv_droite a
+
+lemma neutre_droite (G : groupe) : ∀ a : G.ens, a*1 = a :=
+ begin
+ intro a,
+ rw ← inv_gauche' G a, 
+ rw ← mul_assoc',
+ rw inv_droite',
+ rw neutre_gauche',
+ end
+
+lemma neutre_droite' (G : groupe) (a : G) : a*1 = a := G.neutre_droite a
+
+
+
 
 lemma neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   begin
@@ -169,6 +180,14 @@ lemma neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   rw neutre_droite at h1,
   rwa h1,
   end
+
+
+
+
+
+
+
+
 
 lemma inv_unique (G: groupe) {a : G} {b : G} (h: b*a = 1) : b = a⁻¹ :=
   begin
@@ -907,7 +926,12 @@ theorem mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
   sorry
 
 theorem mor_inv_inv_mor {G H : groupe} {f : morphisme G H}  (a : G) : f a⁻¹ =  (f a)⁻¹ :=
+  begin
+  apply inv_unique,
+  --rw ← morphisme.resp_mul f a⁻¹ a, 
+  --faut juste que ⇑f soit compris comme f.mor et c'est bon
   sorry
+  end
 
 
 def est_isomorphisme {G H : groupe} (f : morphisme G H) : Prop :=
