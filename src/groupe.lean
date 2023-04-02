@@ -61,9 +61,9 @@ pour un groupe G, on fournit un sous ensemble et les preuves de stabilité de G.
 -/
 structure sous_groupe (G: groupe) :=
   (sous_ens : set G.ens)
-  (mul_stab : ∀ a b ∈ sous_ens, G.mul a b ∈ sous_ens)
+  (mul_stab : ∀ a b ∈ sous_ens, a * b ∈ sous_ens)
   (inv_stab : ∀ a ∈ sous_ens, a⁻¹ ∈ sous_ens)
-  (contient_neutre : G.neutre ∈ sous_ens )
+  (contient_neutre : (1:G) ∈ sous_ens )
 
 
 /-
@@ -251,21 +251,178 @@ lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
   end
 
 
-def puissance {G: groupe} (x : G) (n : ℤ) : G :=
+
+def puissance_n {G : groupe} (x : G) : ℕ → G
+  | nat.zero := 1
+  | (nat.succ n) :=  x*(puissance_n n)
+
+instance {G : groupe} : has_pow G ℕ := ⟨puissance_n⟩    
+
+def puissance_z {G : groupe} (x : G) : ℤ → G
+  | (int.of_nat n) := x^n
+  | (int.neg_succ_of_nat n) := (x^(n+1))⁻¹
+
+instance {G : groupe} : has_pow G ℤ := ⟨puissance_z⟩
+
+lemma coe_pow_nat {G : groupe} {n : ℕ} (x : G) : x ^ n = x ^ (n:ℤ) :=
   begin
-    induction n with m m',
-      induction m with k hk, -- si c'est m avec m ≥ 0
-        exact G.neutre, -- si c'est 0
-        exact hk*x, -- si c'est k+1 avec k>=0 et x^k = hk
-      induction m' with k hk, -- si c'est -(m' + 1) avec m' ≥ 0
-        exact x⁻¹, -- si c'est -1
-        exact hk*x⁻¹ -- si c'est -(n+1) avec x^(-n) = hk
+    rw int.coe_nat_eq, 
+    unfold pow,
+    unfold puissance_z,
+    unfold pow, 
+  end
+
+
+lemma self_eq_pow_one {G : groupe} (x : G) : x = x^1 :=
+  begin
+    unfold pow, unfold puissance_n, apply eq.symm, exact G.neutre_droite x,  
+  end
+
+lemma pow_zero_eq_one {G : groupe} (x : G) : x^0 = 1 :=
+  begin
+    unfold pow, unfold puissance_n, 
+  end
+
+lemma pow_minus_one_eq_inv {G : groupe} (x : G) : x^(-1 : ℤ) = x⁻¹ :=
+  begin
+    unfold pow,
+    have : -1 = -[1+ 0], refl, rw this, 
+    unfold puissance_z,
+    rw nat.zero_add, rw ← self_eq_pow_one,  
+  end
+
+lemma mul_of_n_pow_comm {G : groupe} (x : G) (n : ℕ): x * (x^n) = x^n * x :=
+  begin
+    induction n with n hn,
+    rw [pow_zero_eq_one, neutre_droite], apply eq.symm, rw neutre_gauche', 
+    unfold pow at *, unfold puissance_n,
+    rw mul_assoc', 
+    rw hn,
+  end
+
+lemma mul_of_z_pow_comm {G : groupe} (x : G) (n : ℤ) : x * (x^n) = x^n * x :=
+  begin
+    cases n, 
+    rw ← int.coe_nat_eq,
+    rw ← coe_pow_nat, 
+    exact mul_of_n_pow_comm x n, 
+    unfold pow, unfold puissance_z, 
+    rw mul_droite_div_droite, rw inv_involution,
+    rw mul_assoc', 
+    rw mul_of_n_pow_comm, 
+    rw ← mul_assoc',
+    rw inv_gauche', 
+    rw neutre_gauche', 
+  end
+
+lemma mul_left_pow {G : groupe} {n : ℤ} (x : G) : (x ^ (n+1)) = x*(x^n) :=
+  begin
+    cases n,
+    {
+      conv { to_lhs, rw ← int.coe_nat_eq }, 
+      rw int.coe_nat_add_one_out,
+      rw ← coe_pow_nat,
+      unfold pow, unfold puissance_n, unfold puissance_z, unfold pow,
+    },
+    {
+      cases n, 
+      {
+        have h : -[1+ 0] + 1 = 0 := by refl, rw h,
+        have h₂ : (0 : ℤ) = int.of_nat 0, refl, rw h₂,
+        unfold pow, unfold puissance_z,
+        rw [nat.add_succ, nat.add_zero],
+        rw ← self_eq_pow_one,
+        rw inv_droite,
+        rw pow_zero_eq_one,  
+      },
+      {
+        have h : -[1+ n.succ] +1 = -[1+ n], refl, rw h,
+        unfold pow, unfold puissance_z, 
+        unfold pow, unfold puissance_n,
+
+        conv {to_lhs, rw inv_of_mul},
+        simp only [mul_of_n_pow_comm],
+        rw inv_of_mul,
+        rw ← G.mul_assoc,
+        rw ← mul_droite_all,
+        have hh := mul_of_n_pow_comm x n, simp at hh, unfold pow at hh, 
+        rw hh,  
+        rw inv_of_mul,
+        rw ← G.mul_assoc, 
+        have hh' := G.inv_droite, simp at hh', 
+        rw hh' x, 
+        have hh'' : 1 = G.neutre, refl, rw hh'', 
+        rw G.neutre_gauche,
+      }
+    } 
+  end
+
+
+lemma mul_right_pow  {G : groupe} {n : ℤ} (x : G) : (x ^ (n+1)) = (x^n)*x :=
+  begin
+    rw mul_left_pow,
+    rw ← mul_of_z_pow_comm,
   end 
 
-instance {G: groupe} : has_pow G ℤ :=  ⟨puissance⟩
+lemma pow_mul_pow {G : groupe} {n m : ℤ} (x : G) : (x^n)*(x^m) = x^(n+m) :=
+  begin
+    cases m, 
+    { -- m ≥ 0 
+      induction m with k hk,
+        {
+          rw [← int.coe_nat_eq, ← coe_pow_nat],
+          rw pow_zero_eq_one,
+          rw neutre_droite, 
+          rw [int.coe_nat_zero, int.add_zero],
+        },
+        {
+          --rw [← int.coe_nat_eq, ← coe_pow_nat],
+          unfold pow at *, unfold puissance_z at *,
+          unfold pow at *, unfold puissance_n at *,
+          have h := mul_of_n_pow_comm x, unfold pow at h, 
+          rw [h, ← mul_assoc'],
+          rw hk,
+          have iden : n + int.of_nat k.succ = n + k + 1,
+            rw [← int.coe_nat_eq, int.coe_nat_succ, int.add_assoc],
+          rw iden, 
+          have h₂ := mul_right_pow x, unfold pow at h₂, 
+          rw h₂, 
+          rw int.coe_nat_eq, 
+        },
+    },
+    { -- m < 0
+      induction m with k hk,
+      {
+        unfold pow, unfold puissance_z,
+        rw nat.zero_add, rw ← self_eq_pow_one,
+        rw mul_droite_div_droite, rw inv_involution,
+        have h₂ := mul_right_pow x, unfold pow at h₂, rw ← h₂,
+        have : n + -[1+ 0] + 1 = n,
+          rw int.add_assoc, have : -[1+0]=-1, refl, rw this, 
+          rw int.add_left_neg, rw int.add_zero, 
+        rw this, 
+      },
+      {
+        unfold pow at *, unfold puissance_z at *,
+        rw [coe_pow_nat, int.coe_nat_add, int.coe_nat_one, mul_left_pow],
+        rw [inv_of_mul, ← mul_assoc'], 
+        rw ← coe_pow_nat, 
+        rw hk, 
+        rw mul_droite_div_droite, rw inv_involution, 
+        have h₂ := mul_right_pow x, unfold pow at h₂, rw ← h₂,
+        have : (n + -[1+ k]) =  (n + -[1+ k.succ] + 1),
+          have : ∀ z, -[1+ z] = -z.succ, intro, refl,
+          repeat{rw this},
+          repeat{rw ← int.coe_nat_add_one_out},
+          repeat{rw int.neg_add},
+          rw [int.add_assoc n _ 1, int.add_assoc _ (-1) 1], 
+          rw [int.add_left_neg, int.add_assoc, int.add_zero], 
+      }
+    }
+  end
 
 def est_sous_groupe {G: groupe} (A : set G) : Prop 
-  := (∀ a ∈ A, a⁻¹ ∈ A) ∧ (∀ a b ∈ A, a*b ∈ A) ∧ (G.neutre ∈ A)
+  := (∀ a ∈ A, a⁻¹ ∈ A) ∧ (∀ a b ∈ A, a*b ∈ A) ∧ ((1:G) ∈ A)
 
 
 def sous_groupe_engendre {G: groupe} (A : set G) : set G :=
