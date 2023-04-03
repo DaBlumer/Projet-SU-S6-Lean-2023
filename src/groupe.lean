@@ -441,6 +441,70 @@ lemma pow_mul_pow {G : groupe} {n m : ℤ} (x : G) : (x^n)*(x^m) = x^(n+m) :=
     }
   end
 
+lemma pow_minus_eq_inv_pow {G : groupe} {n : ℤ} (x : G) : x^(-n) = (x^n)⁻¹ :=
+  begin
+    rw ← G.neutre_gauche' (x ^ n)⁻¹,
+    rw ← mul_droite_div_droite,
+    rw pow_mul_pow,
+    rw int.add_left_neg,
+    rw [←int.coe_nat_zero, ←coe_pow_nat, pow_zero_eq_one],
+  end
+
+lemma one_pow_eq_one {G : groupe} (n : ℤ) : (1:G)^n = 1 :=
+begin
+  have one_pow_eq_one_nat : ∀ k : ℕ , (1:G)^k = 1, intro, induction k with k hk,
+    {rw pow_zero_eq_one}, -- initialisation
+    {rw [coe_pow_nat, int.coe_nat_succ, mul_left_pow, neutre_gauche', ←coe_pow_nat,hk]}, -- recurrence
+  cases n,
+  { -- n ≥ 0
+    rw [← int.coe_nat_eq, ← coe_pow_nat],
+    exact one_pow_eq_one_nat _,
+  },
+  { -- -[1+ n]
+    have : -[1+ n] = -n.succ, refl, rw this,
+    rw [pow_minus_eq_inv_pow, ← coe_pow_nat],
+    rw one_pow_eq_one_nat _,
+    rw [G.mul_droite_all (1⁻¹) 1 1, inv_gauche', neutre_droite],
+  }
+
+end
+
+
+lemma pow_pow {G : groupe} {n m : ℤ} (x : G) : (x^n)^m = (x^(n*m)) :=
+  begin
+    -- On commence par montrer la version avec m positif, on lui donne un nom car on la
+    -- réutilise dans le cas négatif
+    have pow_pow_pos : ∀ k : ℕ, (x^n)^k = (x^(n*k)),
+    {
+      intro k,
+      induction k with k hk, 
+      { -- m = 0
+        rw [int.coe_nat_zero, int.mul_zero],
+        rw [← int.coe_nat_zero, ← coe_pow_nat, pow_zero_eq_one, pow_zero_eq_one]
+      },
+      { -- m = k + 1 
+        rw [int.coe_nat_succ, int.distrib_left, int.mul_one],
+        rw [coe_pow_nat, int.coe_nat_succ, mul_right_pow (x^n), ← coe_pow_nat], 
+        rw ← pow_mul_pow,
+        rw hk,
+      }
+    },
+    cases m, 
+    { -- m ≥ 0
+      rw [← int.coe_nat_eq, ← coe_pow_nat],
+      exact pow_pow_pos _, 
+    },
+    { -- m < 0
+      have : -[1+ m] = -m.succ := rfl, rw this,
+      have neg_of_mul_neg : ∀ a b : ℤ, a * -b = -(a*b),
+        intros, rw int.neg_eq_neg_one_mul, conv {to_rhs, rw int.neg_eq_neg_one_mul},
+        rw [← int.mul_assoc, int.mul_comm a (-1), int.mul_assoc],
+      rw neg_of_mul_neg,
+      rw pow_minus_eq_inv_pow, rw pow_minus_eq_inv_pow,
+      rw [← coe_pow_nat, pow_pow_pos],
+    }
+  end
+
 def est_sous_groupe {G: groupe} (A : set G) : Prop 
   := (∀ a ∈ A, a⁻¹ ∈ A) ∧ (∀ a b ∈ A, a*b ∈ A) ∧ ((1:G) ∈ A)
 
