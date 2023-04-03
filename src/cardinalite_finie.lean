@@ -326,9 +326,32 @@ def func_card_fini : est_fini (E → F) :=
     f_inj := sorry 
   }
 
+@[instance]
+def fini_bij_fini (G : Type*) (φ : G → F) (φ_inj : function.injective φ) : est_fini G :=
+  {
+    majorant := h'.majorant,
+    f := h'.f ∘ φ,
+    f_inj := function.injective.comp h'.f_inj φ_inj,
+  }
+
+@[instance]
+def fin_n_fini {n : ℕ} : est_fini (fin n) :=
+{
+  majorant := n,
+  f := id,
+  f_inj := function.injective_id
+}
+
+theorem card_fin_n {n : ℕ} : cardinal (fin n) = n :=
+begin
+  unfold cardinal, sorry,
+end
+
 theorem prod_of_cards [h : est_fini E] [h' : est_fini F]
   : cardinal (E×F) = (cardinal E) * (cardinal F) :=
   sorry
+
+
 
 theorem card_of_func [h : est_fini E] [h' : est_fini F]
   : cardinal (E→F) = cardinal F ^ cardinal E :=
