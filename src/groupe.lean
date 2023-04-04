@@ -508,6 +508,22 @@ lemma pow_pow {G : groupe} {n m : ℤ} (x : G) : (x^n)^m = (x^(n*m)) :=
 def est_sous_groupe {G: groupe} (A : set G) : Prop 
   := (∀ a ∈ A, a⁻¹ ∈ A) ∧ (∀ a b ∈ A, a*b ∈ A) ∧ ((1:G) ∈ A)
 
+lemma x_pow_in_sous_groupe {G: groupe} {x : G} {A : set G} {h : est_sous_groupe A}
+  : x∈A → ∀ k : ℤ, x^k ∈ A :=
+begin
+  intros h₃ k,
+  have result_for_nat : ∀ n : ℕ, x^n ∈ A,
+    intro n, induction n with n hn, 
+    rw pow_zero_eq_one, exact h.2.2,
+    rw [coe_pow_nat,int.coe_nat_succ,mul_right_pow],
+    rw coe_pow_nat at hn,
+    exact h.2.1 _ hn _ h₃, 
+  cases k,
+    rw [← int.coe_nat_eq, ←coe_pow_nat], exact result_for_nat _,
+    rw [← int.neg_of_nat_of_succ, pow_minus_eq_inv_pow],
+    apply h.1,
+    exact result_for_nat _,
+end
 
 def sous_groupe_engendre {G: groupe} (A : set G) : set G :=
   ⋂ X : {X': set G // est_sous_groupe X' ∧ A ⊆ X'}, X.val
@@ -842,7 +858,7 @@ section
 open classical
 local attribute [instance, priority 10] prop_decidable
 
-def ordre_fini {G : groupe} (x : G) : Prop := (∃ n : ℕ, n≠0 ∧ x^(n:ℤ) = 1)
+class ordre_fini {G : groupe} (x : G) : Prop := (h : (∃ n : ℕ, n≠0 ∧ x^(n:ℤ) = 1))
 
 /-
 On définit l'ordre d'un élément comme étant égal à :
@@ -852,7 +868,7 @@ Cette définition n'est jamais à utiliser directement, et le lemme qui
 vient après est celui qui nous permettra de travailler avec les ordres.
 -/
 noncomputable def ordre {G : groupe} (x : G) : ℕ :=
-  if h : ordre_fini x then nat.find h else 0
+  if h : ordre_fini x then nat.find h.h else 0
 
 
 lemma carac_ordre {G : groupe} (x : G) 
@@ -860,15 +876,15 @@ lemma carac_ordre {G : groupe} (x : G)
 begin
   by_cases (ordre_fini x),
   { -- ==>
-    have h₁ : (ordre x = nat.find h),
+    have h₁ : (ordre x = nat.find h.h),
       unfold ordre, 
       exact simp_dite h,
     split,
-    have h₂ := nat.find_spec h, rw  [←coe_pow_nat, ← h₁] at h₂, exact h₂.2, 
+    have h₂ := nat.find_spec h.h, rw  [←coe_pow_nat, ← h₁] at h₂, exact h₂.2, 
     intros k hk, cases hk with hk1 hk2,
     intro ha,
     rw h₁ at hk2,
-    have h₂ := (@nat.find_min _ _ h k) hk2,
+    have h₂ := (@nat.find_min _ _ h.h k) hk2,
     simp at h₂,
     rw ← coe_pow_nat at h₂,
     exact h₂ ⟨hk1, ha⟩, 
@@ -889,20 +905,31 @@ end
 lemma ordre_fini_est_non_nul {G : groupe} {x : G} (h : ordre_fini x) : ordre x ≠ 0 :=
 begin
   intro h₂, 
-  have h₃ : (ordre x = nat.find h) := by {unfold ordre, exact simp_dite h},
+  have h₃ : (ordre x = nat.find h.h) := by {unfold ordre, exact simp_dite h},
   rw h₂ at h₃,
-  have h₄ := (nat.find_spec h),
+  have h₄ := (nat.find_spec h.h),
   exact h₄.1 h₃.symm, 
 end
 
 lemma ordre_fini_est_pos {G : groupe} {x : G} (h : ordre_fini x) : ordre x > 0 :=
   nat.lt_of_le_and_ne (nat.zero_le _) (ordre_fini_est_non_nul h).symm
 
-def singleton_generateur {G : groupe} (x : G) : Prop :=
-  @sous_groupe_engendre G {x} = set.univ
+class singleton_generateur {G : groupe} (x : G) : Prop :=
+  (h : @sous_groupe_engendre G {x} = set.univ)
 
 def est_cyclique (G : groupe ) := 
   ∃ x : G, singleton_generateur x
+
+lemma x_pow_k_dans_engendre_x {G : groupe} {x : G}
+  : ∀ k : ℤ, x ^ k ∈ sous_groupe_engendre ({x}:set G) :=
+begin
+  intros k,
+  unfold sous_groupe_engendre,
+  intro A,
+  have h : x ∈ A.val, exact A.property.2 x rfl,
+  simp,
+  exact @x_pow_in_sous_groupe _ _ _ A.property.1 h k,
+end
 
 
 lemma engendre_singleton {G : groupe} (x : G) : 
@@ -950,45 +977,9 @@ lemma engendre_singleton {G : groupe} (x : G) :
     },
     { -- Sens 2 : {x^k | k∈ℤ } ⊆ <x>
       intro h,
-      cases h with k hk, 
-      revert g, 
-      have h_pos : ∀ g : G, ∀ n : ℕ, g = x ^ n → g ∈ sous_groupe_engendre ({x}:set G),
-      {
-        intros g n hn, revert g, 
-        induction n with d hd,
-          { -- x^0 = neutre ∈ <x>  
-            intros g hk, 
-            rw [pow_zero_eq_one] at hk,
-            rw hk, 
-            exact (engendre_est_sous_groupe ({x}:set G)).2.2,
-          },
-          { -- x^d avec d ≥ 1 
-            intros g hk, 
-            have h₀ := hd (x ^ (int.of_nat d)) rfl,
-            rw [coe_pow_nat, int.coe_nat_succ, mul_right_pow x] at hk,
-            rw ← int.coe_nat_eq at h₀,
-            have h₁ : x∈(sous_groupe_engendre ({x}:set G)),
-              rw engendre₂_est_engendre, 
-              have : x∈ ({x} : set G), unfold has_mem.mem, unfold singleton, unfold set_of, 
-              exact ((engendre₂_contient_ens {x}) x this),
-              rw hk,
-            exact ((engendre_est_sous_groupe {x}).2.1 _ h₀ _ h₁), 
-          }
-      },
-      induction k with n hn, 
-      {
-        rw ← int.coe_nat_eq, rw ← coe_pow_nat,
-        intros g hg, 
-        exact h_pos g n hg,
-      },
-      {
-        intros g hk,
-        unfold pow at hk, unfold puissance_z at hk, -- TODO: lemme x^(-n) = (x^n)⁻¹
-        have h : x ^ (hn + 1) ∈ sous_groupe_engendre ({x}:set G), 
-          apply h_pos (x^(hn + 1)) (hn + 1), refl, 
-        rw hk,  
-        exact ((engendre_est_sous_groupe {x}).1 _ h), 
-      }
+      cases h with k hk,
+      rw hk,
+      exact x_pow_k_dans_engendre_x _,
     }
   end
 
@@ -1035,14 +1026,39 @@ begin
     intro h, exact h,
 end
 
+lemma unicite_puissance_ordre_fini {G : groupe} {x : G} (h : ordre_fini x)
+  : ∀ k k' : ℕ, k < ordre x → k' < ordre x → x^k = x^k' → k = k' :=
+begin
+  intros k k' hk hk' h₁,
+  rw [G.mul_droite_all _ _ (x^(-(int.of_nat k)))] at h₁,
+  rw [coe_pow_nat, pow_mul_pow, int.coe_nat_eq,int.add_right_neg] at h₁,
+  rw [← int.coe_nat_zero,  ← coe_pow_nat, pow_zero_eq_one] at h₁,
+  rw [coe_pow_nat, pow_mul_pow] at h₁,
+  by_cases h₄ : ((k':ℤ) ≤ ↑k),
+  { --k' < k
+    rw [← int.sub_eq_add_neg, ←int.coe_nat_eq] at h₁,
+    have h₂ := int.sub_le_sub h₄ (int.le_refl ↑k'), 
+    rw [int.sub_eq_add_neg, int.add_right_neg] at h₂,
+    rw ← int.coe_nat_lt_coe_nat_iff at hk, 
+    have h₅ := int.sub_le_sub hk (int.coe_zero_le k'),
+    rw [int.add_comm, int.add_sub_assoc, int.add_comm] at h₅,
+    have h₆ : ↑k - ↑k' < ((ordre x):ℤ) - 0,
+      exact h₅,
+    have why : ∀ z : ℤ, z - 0 = z, intro, rw [int.sub_eq_add_neg, int.neg_zero, int.add_zero],
+    rw (why _) at h₅,
+     
+    sorry,
+  },
+  {
+    sorry,
+  }
 
+end
 
-@[instance]
-noncomputable def engendre_fini_de_ordre_fini {G : groupe} {x : G} 
-  (h : ordre_fini x) : est_fini {g // g ∈ @sous_groupe_engendre G {x}} :=
+noncomputable def bijection_engendre_ordre_fini_nat {G : groupe} (x : G) [h : ordre_fini x]
+  : bijection {g // g ∈ @sous_groupe_engendre G {x}} (fin (ordre x)) :=
 {
-  majorant := ordre x,
-  f := λ g, 
+  val := λ g, 
     let f_g := choose ((carac_engendre_singleton_ordre_fini h g.val).1 g.property) in
     ⟨int.nat_abs f_g.val, 
       begin
@@ -1051,49 +1067,102 @@ noncomputable def engendre_fini_de_ordre_fini {G : groupe} {x : G}
         rw h₁ at *,
         rw int.coe_nat_lt_coe_nat_iff at h₂, 
         rw int.nat_abs_of_nat,
-        exact h₂ 
+        exact h₂,
       end
     ⟩,
-  f_inj :=
-  begin
-    intro, intro, 
-    simp,
-    intro h₂,
-    have h₃ := fin.mk.inj h₂,
-    have h_a₁ : ∃ (k : ℤ), k ≥ 0 ∧ k < ↑(ordre x) ∧ a₁.val = x ^ k
-      := (carac_engendre_singleton_ordre_fini h a₁.val).1 a₁.property,
-    have h_a₂ : ∃ (k : ℤ), k ≥ 0 ∧ k < ↑(ordre x) ∧ a₂.val = x ^ k
-      := (carac_engendre_singleton_ordre_fini h a₂.val).1 a₂.property,
-    have h₄ : (choose h_a₁).val.nat_abs = (choose h_a₂).val.nat_abs, exact h₃,
-    have p_a₁ := prop_of_choose h_a₁,
-    have p_a₂ := prop_of_choose h_a₂,
-    rw ← int.coe_nat_eq_coe_nat_iff at h₄,
-    rw ← int.eq_nat_abs_of_zero_le p_a₁.1 at h₄,
-    rw ← int.eq_nat_abs_of_zero_le p_a₂.1 at h₄,
-    apply subtype.eq,
-    rw [p_a₁.2.2, p_a₂.2.2],
-    rw h₄, 
-  end
+  property := ⟨
+    begin
+      intro, intro, 
+      simp,
+      intro h₂,
+      have h₃ := fin.mk.inj h₂,
+      have h_a₁ : ∃ (k : ℤ), k ≥ 0 ∧ k < ↑(ordre x) ∧ a₁.val = x ^ k
+        := (carac_engendre_singleton_ordre_fini h a₁.val).1 a₁.property,
+      have h_a₂ : ∃ (k : ℤ), k ≥ 0 ∧ k < ↑(ordre x) ∧ a₂.val = x ^ k
+        := (carac_engendre_singleton_ordre_fini h a₂.val).1 a₂.property,
+      have h₄ : (choose h_a₁).val.nat_abs = (choose h_a₂).val.nat_abs, exact h₃,
+      have p_a₁ := prop_of_choose h_a₁,
+      have p_a₂ := prop_of_choose h_a₂,
+      rw ← int.coe_nat_eq_coe_nat_iff at h₄,
+      rw ← int.eq_nat_abs_of_zero_le p_a₁.1 at h₄,
+      rw ← int.eq_nat_abs_of_zero_le p_a₂.1 at h₄,
+      apply subtype.eq,
+      rw [p_a₁.2.2, p_a₂.2.2],
+      rw h₄,
+    end,
+    begin
+      intro, simp,
+      let g := x ^ (b.val),
+      have hg : g ∈ sous_groupe_engendre ({x}:set G) := x_pow_k_dans_engendre_x b.val,
+      let gg : {g' // g' ∈ sous_groupe_engendre ({x}:set G)} := ⟨g, hg⟩,  
+      apply Exists.intro gg,
+      apply fin.eq_of_veq, simp,
+      have h₁ := (carac_engendre_singleton_ordre_fini h gg.val).1 gg.property,
+      have p_gg := prop_of_choose h₁,
+      rw ← int.coe_nat_eq_coe_nat_iff,
+      have h₂ : gg.val = x^b.val := rfl, rw p_gg.2.2 at h₂,
+      rw [int.eq_nat_abs_of_zero_le p_gg.1] at h₂,
+      have lt₁ := p_gg.2.1, rw int.eq_nat_abs_of_zero_le p_gg.1 at lt₁,
+      have lt₂ := b.property,
+      rw int.coe_nat_lt_coe_nat_iff at lt₁,
+      rw ←coe_pow_nat at h₂,
+      rw int.coe_nat_eq_coe_nat_iff,
+      have h₀ : gg.val = x^b.val, refl, 
+      exact unicite_puissance_ordre_fini h _ _ lt₁ lt₂ h₂, 
+    end
+  ⟩
+}
+
+def bijection_cyclique_engendre {G : groupe} (x : G)
+  [h : ordre_fini x] [h₂ : singleton_generateur x]
+  : bijection G {g // g ∈ sous_groupe_engendre ({x}:set G)} :=
+by {rw h₂.h, exact bij_univ_subtype G}
+
+noncomputable def bijection_cyclique_fini_nat {G : groupe} (x : G)
+  [h : ordre_fini x] [h₂ : singleton_generateur x]
+  : bijection G (fin (ordre x)) :=
+let B := bijection_engendre_ordre_fini_nat x in
+let Id := bijection_cyclique_engendre x in
+{
+  val := B.val ∘ Id.val,
+  property := function.bijective.comp B.property Id.property
+}
+
+@[instance]
+noncomputable def engendre_fini_de_ordre_fini {G : groupe} {x : G} 
+  [h : ordre_fini x] : est_fini {g // g ∈ @sous_groupe_engendre G {x}} :=
+{
+  majorant := ordre x,
+  f := (bijection_engendre_ordre_fini_nat x).val,
+  f_inj := (bijection_engendre_ordre_fini_nat x).property.1
 }
 
 
 @[instance]
 noncomputable def cyclique_fini_de_ordre_fini {G : groupe} {x : G} 
-  (h : ordre_fini x) (h₁ : singleton_generateur x) : est_fini G :=
-  @fini_bij_fini {g // g ∈ @sous_groupe_engendre G {x}} (engendre_fini_de_ordre_fini h) G
-    (λ g, ⟨g, by {unfold singleton_generateur at h₁, rw h₁, apply true.intro}⟩)
+  [h : ordre_fini x] [h₁ : singleton_generateur x] : est_fini G :=
+  @fini_bij_fini {g // g ∈ @sous_groupe_engendre G {x}} _ G
+    (λ g, ⟨g, by { unfreezingI{cases h₁ with h₁}, rw h₁, apply true.intro}⟩)
     begin {intro, intro, simp, intro aa, exact aa} end
 
 
 --set_option trace.class_instances true 
 
+lemma card_engendre_ordre_fini {G : groupe} {x : G} [h₂ : ordre_fini x]
+  : cardinal {g // g ∈ @sous_groupe_engendre G {x}} = ordre x :=
+begin
+  apply card_proof1,
+  exact bijection_engendre_ordre_fini_nat x,
+end
+
 lemma card_groupe_cyclique_fini {G : groupe} {x : G}
-  (h₂ : ordre_fini x) (h₁ : singleton_generateur x) [h₃ : est_fini G]
+  [h₂ : ordre_fini x] [h₁ : singleton_generateur x]
   : cardinal G = ordre x :=
+begin
+  apply card_proof1,
+  exact (bijection_cyclique_fini_nat x),
+end
 
-
---lemma card_groupe_cyclique {G : groupe} (h: est_cyclique G)
---  : cardinal (G)-/
 
 end
 /-******************************Fin Définitions et coercions de base *****************************-/
