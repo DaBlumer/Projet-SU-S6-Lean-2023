@@ -206,8 +206,11 @@ lemma int_mod_domaine
     }
 
   end
-
-
 end
+
+def fin_zero_to_nat_sum {α : Type*} {n : ℕ}[has_add α] [has_zero α] (f : ℕ → α) : ℕ → α
+  | 0 := 0
+  | (nat.succ n) := fin_zero_to_nat_sum n + f (n+1)
+
 
 end generique

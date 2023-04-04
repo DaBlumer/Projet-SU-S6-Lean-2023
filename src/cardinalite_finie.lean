@@ -7,19 +7,19 @@ open generique
 
 section
 universes u v
-structure bijections (E: Type u) (F : Type v) :=
+structure bijection_inv (E: Type u) (F : Type v) :=
   (f : E → F)
   (f_inv : F → E)
   (inv_gauche : function.left_inverse f_inv f)
   (inv_droite : function.right_inverse f_inv f)
 
-def bijections' (E : Type u) (F : Type v) :=
+def bijection (E : Type u) (F : Type v) :=
   {f : E → F // function.bijective f}
 
 end
 
-def bijection'_of_bijection {E : Type*} {F : Type*} (bij : bijections E F) 
-  : bijections' E F := ⟨bij.f, 
+def bijection_of_bijection_inv {E : Type*} {F : Type*} (bij : bijection_inv E F) 
+  : bijection E F := ⟨bij.f, 
   begin 
     split, 
       {
@@ -36,9 +36,8 @@ def bijection'_of_bijection {E : Type*} {F : Type*} (bij : bijections E F)
   end⟩ 
 
 
-
-noncomputable def bijection_of_bijection' {E: Type*} {F: Type*} (bij' : bijections' E F) 
-  : bijections E F := 
+noncomputable def bijection_inv_of_bijection {E: Type*} {F: Type*} (bij' : bijection E F) 
+  : bijection_inv E F := 
   {
     f := bij'.val,
     f_inv := λ e, (choose (bij'.property.2 e)).val,
@@ -58,7 +57,7 @@ noncomputable def bijection_of_bijection' {E: Type*} {F: Type*} (bij' : bijectio
       end, 
   }   
 
-def permutations (E : Type*) := bijections' E E 
+def permutations (E : Type*) := bijection E E 
 
 -- Un ensemble E est fini si il existe une injection de E dans ⟦0, n-1⟧ pour un certain n
 class est_fini (E : Type*) := 
@@ -67,12 +66,12 @@ class est_fini (E : Type*) :=
   (f_inj : function.injective f)
 
 
-class cardinal' (E : Type*) :=
+structure cardinal' (E : Type*) :=
   (card : ℕ)
-  (bij : bijections E (fin card))
+  (bij : bijection E (fin card))
 
 def cardinal_est (E : Type*) (n : ℕ) : Prop :=
-  nonempty (bijections E (fin n)) 
+  nonempty (bijection E (fin n)) 
 
 
 section -- On a besoin du principe du tiers exclu pour montrer ça
@@ -89,7 +88,8 @@ begin
       --cases hn with f hf, 
       let inv_f : fin 0 → E := λ n,
         by  {apply false.elim, exact nat.not_lt_zero n.val n.property},
-      apply bijections.mk f inv_f; intro; apply false.elim,
+      apply bijection_of_bijection_inv,
+      apply bijection_inv.mk f inv_f; intro; apply false.elim,
         {exact nat.not_lt_zero (f x).val (f x).property},
         {exact nat.not_lt_zero (f (inv_f x)).val (f (inv_f x)).property }
     },
@@ -179,7 +179,8 @@ begin
             exact classical.inhabited_of_nonempty nexi, -- CLASSICAL  
           let f_inv : fin m.succ → E := λ ki, 
             (@arbitrary {e // f e = ki} (surjf ki)),
-          apply bijections.mk f f_inv, 
+          apply bijection_of_bijection_inv,
+          apply bijection_inv.mk f f_inv, 
           {
             intro x, 
             simp [f_inv],
@@ -254,8 +255,8 @@ lemma my_func_ident (e : E×F) : (@my_func E F h h' e).val = (h'.majorant * (h.f
     simp only [my_func], 
   end
 
-@[instance]
-def prod_card_fini : est_fini (E×F) :=
+
+instance prod_card_fini : est_fini (E×F) :=
   {
     majorant := h.majorant*h'.majorant+1,
     f := @my_func E F h h', 
@@ -319,20 +320,21 @@ def prod_card_fini : est_fini (E×F) :=
   }
 
 @[instance]
-def func_card_fini : est_fini (E → F) :=
+noncomputable def func_card_fini : est_fini (E → F) :=
   {
     majorant := h'.majorant ^ h.majorant,
-    f := sorry,
-    f_inj := sorry 
+    f := λ φ, 
+      let bij_E := bijection_inv_of_bijection (fini_a_cardinal_fini E).bij in
+      fin.mk 
+        --(fin_zero_to_nat_sum 
+        --  (λ k, 1 * (h'.f (φ(bij_E.f_inv k))).val) (fini_a_cardinal_fini E).card)
+        sorry
+        begin
+          sorry
+        end,
+    f_inj := sorry,
   }
 
-@[instance]
-def fini_bij_fini (G : Type*) (φ : G → F) (φ_inj : function.injective φ) : est_fini G :=
-  {
-    majorant := h'.majorant,
-    f := h'.f ∘ φ,
-    f_inj := function.injective.comp h'.f_inj φ_inj,
-  }
 
 @[instance]
 def fin_n_fini {n : ℕ} : est_fini (fin n) :=
@@ -341,6 +343,7 @@ def fin_n_fini {n : ℕ} : est_fini (fin n) :=
   f := id,
   f_inj := function.injective_id
 }
+
 
 theorem card_fin_n {n : ℕ} : cardinal (fin n) = n :=
 begin
@@ -352,13 +355,33 @@ theorem prod_of_cards [h : est_fini E] [h' : est_fini F]
   sorry
 
 
-
 theorem card_of_func [h : est_fini E] [h' : est_fini F]
   : cardinal (E→F) = cardinal F ^ cardinal E :=
   sorry
 
-theorem eq_card_of_idempotents [h : est_fini E] [h' : est_fini F] (bij : bijections E F) 
+theorem card_proof1 [h : est_fini E] {n : ℕ} (bij : bijection E (fin n))
+  : cardinal (E) = n :=
+  sorry
+
+theorem eq_card_of_idempotents [h : est_fini E] [h' : est_fini F] (bij : bijection E F) 
   : cardinal E = cardinal F := 
   sorry
 
+def fini_bij_fini (G : Type*) (φ : G → F) (φ_inj : function.injective φ) : est_fini G :=
+  {
+    majorant := h'.majorant,
+    f := h'.f ∘ φ,
+    f_inj := function.injective.comp h'.f_inj φ_inj,
+  }
+
 end -- section utilisant classical
+
+def bij_univ_subtype (G : Type*) : bijection G {g:G // g ∈ @set.univ G} :=
+  {
+    val := λ g, ⟨g, by {apply true.intro}⟩,
+    property := 
+      by {split, 
+        intros a₁ a₂ h, simp at h, exact h,
+        intro, apply Exists.intro b.val, simp, apply subtype.eq, simp,
+      }
+  }
