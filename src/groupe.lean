@@ -694,11 +694,43 @@ def est_distingue {G : groupe} (H : sous_groupe G) : Prop :=
 
 lemma carac_est_distingue {G : groupe} (H' : sous_groupe G)
   : est_distingue H' ↔ ∀ h ∈ H', ∀ g : G, g*h*g⁻¹ ∈ H'  :=
-  sorry
+begin
+  split, {
+    intros dis_H h h_in_H g,
+    unfold est_distingue at dis_H,
+    have hg := dis_H g,
+    rw ←set_eq at hg, 
+    have h₁ : g*h ∈ mul_gauche_ens g ↑H',
+      apply Exists.intro h, apply Exists.intro h_in_H, refl, 
+    have h₂ := (hg (g*h)).1 h₁, 
+    cases h₂ with h' tmp, cases tmp with h'_in_H h₃,
+    rw G.mul_droite_all _ _ g⁻¹ at h₃,
+    rw h₃,
+    rw [mul_assoc', inv_droite, neutre_droite],
+    exact h'_in_H,
+  }, {
+    intro P, intro g,
+    rw ← set_eq, intro a,
+    split;intro tmp; cases tmp with h tmp; cases tmp with h_in_H h_eq,
+    {
+      apply Exists.intro (g*h*g⁻¹), apply Exists.intro (P h h_in_H g),
+      repeat {rw mul_assoc'}, rw [inv_gauche', neutre_droite],
+      exact h_eq,
+    }, {
+      apply Exists.intro (g⁻¹*h*(g⁻¹)⁻¹), apply Exists.intro (P h h_in_H g⁻¹),
+      repeat {rw ←mul_assoc'}, rw [inv_droite, inv_involution, neutre_gauche'],
+      exact h_eq,
+    }
+  }
+end
 
 lemma distingue_droite_to_gauche {G : groupe } {H' : sous_groupe G}
   (dH : est_distingue H') (h ∈ H') (g : G) : ∃ h' ∈ H', g*h = h'*g :=
-  sorry
+begin
+  apply Exists.intro (g*h*g⁻¹),
+  apply Exists.intro ((carac_est_distingue H').1 dH _ H g),
+  repeat {rw mul_assoc'}, rw [inv_gauche', neutre_droite],
+end
 
 def rel_gauche_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
   λ x y : G, y ∈ mul_gauche_ens x H 
@@ -747,8 +779,13 @@ end
 
 
 lemma distingue_rels_equiv { G : groupe} {H : sous_groupe G} 
-  (dH : est_distingue H) : (G %. H) = (H .% G)
-  := sorry
+  (dH : est_distingue H) : (G %. H) = (H .% G) :=
+begin
+  unfold rel_gauche_mod, unfold rel_droite_mod,
+  apply funext,
+  intro, apply funext, intro, 
+  rw dH,
+end
 
 lemma mul_induite_bien_def {G: groupe} {H: sous_groupe G} (dH: est_distingue H)
   {a b c d : G} (rac : (G %. H) a c) (rbd : (G %. H) b d)
@@ -1063,13 +1100,12 @@ end
 lemma unicite_puissance_ordre_fini {G : groupe} {x : G} (h : ordre_fini x)
   : ∀ k k' : ℕ, k < ordre x → k' < ordre x → x^k = x^k' → k = k' :=
 begin
-  intros k k' hk hk' h₁,
-  rw [G.mul_droite_all _ _ (x^(-(int.of_nat k)))] at h₁,
-  rw [coe_pow_nat, pow_mul_pow, int.coe_nat_eq,int.add_right_neg] at h₁,
-  rw [← int.coe_nat_zero,  ← coe_pow_nat, pow_zero_eq_one] at h₁,
-  rw [coe_pow_nat, pow_mul_pow] at h₁,
-  by_cases h₄ : ((k':ℤ) ≤ ↑k),
-  { --k' < k
+  have both : ∀ k k' : ℕ, k < ordre x → k' < ordre x → x^k = x^k' → (k:ℤ) ≤ ↑k' → k = k', 
+    intros k' k hk' hk h₁ h₄,
+    rw [G.mul_droite_all _ _ (x^(-(int.of_nat k')))] at h₁,
+    rw [coe_pow_nat, pow_mul_pow, int.coe_nat_eq,int.add_right_neg] at h₁,
+    rw [← int.coe_nat_zero,  ← coe_pow_nat, pow_zero_eq_one] at h₁,
+    rw [coe_pow_nat, pow_mul_pow] at h₁,
     rw [← int.sub_eq_add_neg, ←int.coe_nat_eq] at h₁,
     have h₂ := int.sub_le_sub h₄ (int.le_refl ↑k'), 
     rw [int.sub_eq_add_neg, int.add_right_neg] at h₂,
@@ -1080,12 +1116,27 @@ begin
       exact h₅,
     have why : ∀ z : ℤ, z - 0 = z, intro, rw [int.sub_eq_add_neg, int.neg_zero, int.add_zero],
     rw (why _) at h₅,
-     
-    sorry,
-  },
-  {
-    sorry,
-  }
+    rw [int.coe_nat_le_coe_nat_iff] at h₄,
+    have h₆ := int.lt_of_add_lt_add_right (int.lt_add_one_of_le h₅),
+    rw [←int.coe_nat_sub h₄, int.coe_nat_lt_coe_nat_iff] at h₆,
+    rw [←int.coe_nat_sub h₄, ←int.coe_nat_zero, int.coe_nat_le_coe_nat_iff] at h₂,
+    have h₇ := (carac_ordre x).2 (k-k'),
+    by_cases h₈ : (k-k') = 0,
+      rw nat.sub_eq_zero_iff_le at h₈, exact nat.le_antisymm h₄ h₈,
+      exfalso,
+      rw [←int.coe_nat_sub h₄] at h₁, 
+      exact h₇ ⟨h₈, h₆⟩ h₁.symm,
+  intros k k' hk hk' h₁, 
+  by_cases h₄: (k:ℤ) ≤ ↑k',
+    {exact both k k' hk hk' h₁ h₄},
+    {
+      rw int.coe_nat_le_coe_nat_iff at h₄,
+      have h₅ := (nat.lt_iff_le_not_le.1 (not_le.1 h₄)).1,
+      rw ← int.coe_nat_le_coe_nat_iff at h₅, 
+      apply eq.symm,
+      exact both k' k hk' hk h₁.symm h₅,
+    }
+
 
 end
 
@@ -1369,7 +1420,7 @@ lemma carac_mor_inj {G H : groupe} (f : morphisme G H)
   : function.injective f ↔ ker f = {(1:G)} :=
 begin
   split, {
-    intro f_inj, apply set_eq, intro, split;intro h, 
+    intro f_inj, rw ←set_eq, intro, split;intro h, 
     rw ←im_one_in_ker at h, rw in_singleton, 
     rw ← @mor_neutre_est_neutre _ _ f at h,
     exact f_inj h,
@@ -1392,7 +1443,7 @@ theorem ker_comp_eq_inv_ker {G H K: groupe} (g : morphisme H K) (f : morphisme G
 theorem im_comp_eq_im_im {G H K: groupe} (f : morphisme G H) (g : morphisme H K) 
   : im (g ∘₁ f) = ens_image g (im f) :=
 begin
-  apply set_eq, intro a, split; intro h,
+  rw ←set_eq, intro a, split; intro h,
     { -- im (g ∘ f) ⊆ g (im f)
       cases h with x hx, unfold ens_image,
       apply Exists.intro (f x),

@@ -19,11 +19,13 @@ instance {α : Type*} : has_union (set α) :=
 instance {α : Type*} : has_inter (set α) :=
   ⟨λ A B, {x | x ∈ A ∧ x ∈ B}⟩
 
-lemma set_eq {α : Type*} (A B : set α) : (∀ a, a ∈ A ↔ a ∈ B) → A = B :=
+lemma set_eq {α : Type*} (A B : set α) : (∀ a, a ∈ A ↔ a ∈ B) ↔  A = B :=
 begin
+  split,
   intro fa,
   apply funext, intro, apply propext, split,
   exact (fa x).1, exact (fa x).2,
+  intros AeB a, rw AeB,
 end
 
 lemma in_singleton {α : Type*} (x y : α) : (y ∈ ({x} : set α)) = (y = x) := rfl
