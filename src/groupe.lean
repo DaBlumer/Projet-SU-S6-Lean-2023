@@ -117,6 +117,13 @@ instance morphisme_to_fonction {G H : groupe}
   : has_coe_to_fun (morphisme G H) (λ _, G → H) :=
   ⟨λ m, m.mor⟩
 
+def comp_mor {G H K: groupe} (g : morphisme H K) (f : morphisme G H) : morphisme G K := 
+  {
+    mor := g.mor∘f.mor,
+    resp_mul := λ g₁ g₂, by {simp, rw [f.resp_mul, g.resp_mul]} 
+  }
+
+local notation g `∘₁`:10 f := comp_mor g f
 
 section -- exemples d'utilisation transparente des coercions
 
@@ -156,20 +163,26 @@ lemma neutre_gauche' (G : groupe) (a : G) : 1*a = a := G.neutre_gauche a
 
 
 lemma inv_droite (G: groupe) : ∀ a : G.ens, a * a⁻¹ = 1 :=
-  sorry
+  begin
+  intro,
+  have h₁ : (a * a⁻¹)*(a * a⁻¹) = (a * a⁻¹),
+    rw [mul_assoc', ← G.mul_assoc' a⁻¹, G.inv_gauche', G.neutre_gauche'],
+  have h₂ := G.inv_gauche' (a * a⁻¹),
+  rw [←h₁,← G.mul_assoc' _ (a*a⁻¹) (a*a⁻¹), h₁] at h₂,
+  rw [inv_gauche', neutre_gauche'] at h₂,
+  exact h₂,
+  end
 
-lemma inv_droite' (G : groupe) (a : G) : a*a⁻¹ = 1 := G.inv_droite a
 
 lemma neutre_droite (G : groupe) : ∀ a : G.ens, a*1 = a :=
  begin
  intro a,
  rw ← inv_gauche' G a, 
  rw ← mul_assoc',
- rw inv_droite',
+ rw inv_droite,
  rw neutre_gauche',
  end
 
-lemma neutre_droite' (G : groupe) (a : G) : a*1 = a := G.neutre_droite a
 
 
 
@@ -191,16 +204,17 @@ lemma neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
 
 lemma inv_unique (G: groupe) {a : G} {b : G} (h: b*a = 1) : b = a⁻¹ :=
   begin
-  rw ← neutre_droite' G b,
-  rw ← inv_droite' G a,
+  rw ← neutre_droite G b,
+  rw ← inv_droite G a,
   rw ← mul_assoc',
   rw h,
   rw neutre_gauche',
   end
 
+
 lemma inv_involution (G : groupe) (a : G) : (a⁻¹)⁻¹ = a :=
   begin
-  rw ← neutre_droite' G a⁻¹⁻¹,
+  rw ← neutre_droite G a⁻¹⁻¹,
   rw ← inv_gauche' G a,
   rw ← mul_assoc',
   rw inv_gauche' G a⁻¹,
@@ -213,8 +227,8 @@ lemma mul_droite_div_droite (G : groupe) (a b c : G) : a * b = c ↔ a = c * b�
   intro h,
   rw ← h,
   rw mul_assoc' G a b b⁻¹,
-  rw inv_droite' G b,
-  rw neutre_droite',
+  rw inv_droite G b,
+  rw neutre_droite,
   intro h,
   rw h,
   rw mul_assoc' G c b⁻¹ b,
@@ -233,14 +247,14 @@ lemma mul_gauche_div_gauche (G : groupe) (a b c : G) : a * b = c ↔ b = a⁻¹ 
   intro h,
   rw h,
   rw ← mul_assoc',
-  rw inv_droite',
+  rw inv_droite,
   rw neutre_gauche',
   end
 
 lemma inv_of_mul (G: groupe) (a b : G) : (a*b)⁻¹ = b⁻¹ * a⁻¹ :=
   begin
   rw ← mul_gauche_div_gauche,
-  rw ← neutre_droite' G a⁻¹,
+  rw ← neutre_droite G a⁻¹,
   rw ← mul_gauche_div_gauche,
   rw ← mul_assoc',
   rw inv_droite,
@@ -253,7 +267,7 @@ lemma mul_droite_all (G : groupe) (a b c : G) : a=b ↔ a*c = b*c :=
   rw h,
   intro h,
   rw mul_droite_div_droite at h,
-  rw  [mul_assoc', inv_droite', neutre_droite'] at h, 
+  rw  [mul_assoc', inv_droite, neutre_droite] at h, 
   exact h,
   end
 
@@ -270,6 +284,8 @@ lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
   rw neutre_gauche'
   end
 
+lemma neutre_unique_fort (G : groupe) (e a : G) (h : e*a = a) : e = 1 :=
+  by {rw [mul_droite_div_droite, inv_droite] at h, exact h}
 
 
 def puissance_n {G : groupe} (x : G) : ℕ → G
@@ -1170,49 +1186,97 @@ end
 
 
 
+lemma mor_resp_mul {G H : groupe} {f : morphisme G H}
+  : ∀ a b : G, f (a * b) = f a * f b := λ a b, f.resp_mul a b 
 
+lemma mor_fun_eq {G H : groupe} (f : morphisme G H) : (f : G→H) = f.mor := rfl
+lemma comp_mor_fun_eq {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
+  : (g∘₁f : G→K) = ((g:H→K) ∘ (f:G→H)) := rfl 
 
-
-theorem mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
-  sorry
+lemma mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
+begin
+  apply H.neutre_unique_fort (f 1) (f 1),
+  rw [← mor_resp_mul, G.neutre_droite],
+end
 
 theorem mor_inv_inv_mor {G H : groupe} {f : morphisme G H}  (a : G) : f a⁻¹ =  (f a)⁻¹ :=
   begin
   apply inv_unique,
-  --rw ← morphisme.resp_mul f a⁻¹ a, 
-  --faut juste que ⇑f soit compris comme f.mor et c'est bon
-  sorry
+  rw ← mor_resp_mul a⁻¹ a,
+  rw inv_gauche',
+  rw mor_neutre_est_neutre,
   end
 
 
 def est_isomorphisme {G H : groupe} (f : morphisme G H) : Prop :=
-  ∃ (g : morphisme H G), g.mor ∘ f.mor = id ∧ f.mor ∘ g.mor = id
+  ∃ (g : morphisme H G), function.left_inverse g f ∧ function.right_inverse g f
+
+lemma carac_est_isomorphisme {G H : groupe} (f : morphisme G H)
+  : est_isomorphisme f ↔ function.bijective f :=
+begin 
+  split,
+  { -- isomorphisme → bijectif
+    intro h, cases h with g hg,
+    exact ⟨function.left_inverse.injective hg.1, function.right_inverse.surjective hg.2⟩, 
+  },
+  { -- bijectif → isomorphisme
+    intro h,
+    let f_bij_inv : bijection_inv G H := bijection_inv_of_bijection ⟨f, h⟩,
+    let g := f_bij_inv.f_inv,
+    have inv_resp_mul : ∀ a b : H, g (a*b) = g a * g b,
+      intros, 
+      apply h.1,
+      rw mor_resp_mul,
+      have h₁ := f_bij_inv.inv_droite,
+        have h₂ : f_bij_inv.f = f, refl, rw h₂ at h₁,
+      repeat {rw h₁},
+      apply Exists.intro (⟨g, inv_resp_mul⟩ : morphisme H G),
+      exact ⟨f_bij_inv.inv_gauche, f_bij_inv.inv_droite⟩, 
+  }
+end
 
 def End (G : groupe) := morphisme G G
-structure Aut (G : groupe) :=
-  (f: morphisme G G)
-  (h: est_isomorphisme f)
+def Aut (G : groupe) := {f : morphisme G G // est_isomorphisme f}
 
+def aut_int_fun {G : groupe} (g : G) (h : G) : G := g*h*g⁻¹
 def aut_int {G: groupe} (g : G) : morphisme G G :=
-  { mor:= λ h, g*h*g⁻¹,
+  { mor:= aut_int_fun g,
     resp_mul := 
     begin
     intro a,
-    intro b,
+    intro b, unfold aut_int_fun,
     rw ← mul_assoc' G (g*a*g⁻¹) (g * b) g⁻¹,
     rw ←  mul_assoc' G (g*a*g⁻¹) g  b,
     rw mul_assoc' G (g*a) g⁻¹ g,
     rw inv_gauche',
-    rw neutre_droite',
+    rw neutre_droite,
     rw mul_assoc' G g a b,    
     end
   }
     
 
 lemma aut_int_est_iso {G: groupe} (g : G) : est_isomorphisme (aut_int g) :=
-  sorry
+begin
+  apply Exists.intro (aut_int g⁻¹),
+  split; intro; unfold aut_int; repeat {rw mor_fun_eq}; simp; unfold aut_int_fun,
+  {
+    rw [inv_involution, ← G.mul_assoc' g⁻¹, ← G.mul_assoc' g⁻¹, G.inv_gauche'],
+    rw [G.neutre_gauche', G.mul_assoc', G.inv_gauche', G.neutre_droite],
+  }, 
+  {
+    rw [inv_involution, ← G.mul_assoc' g, ← G.mul_assoc' g, G.inv_droite],
+    rw [G.neutre_gauche', G.mul_assoc', G.inv_droite, G.neutre_droite],
+  }
+end
 
 def Int (G: groupe) := {f // ∃ g:G , f = aut_int g } 
+
+
+def im_recip {G H : groupe} (f : morphisme G H) (B: set H) :=
+  im_recip (f : G→H) B
+
+def ens_image {G H : groupe} (f : morphisme G H) (A: set G) :=
+  im_dir (f : G→H) A
 
 def ker {G H : groupe} (f : morphisme G H) : set G :=
   {a : G.ens | f a = 1}
@@ -1220,27 +1284,32 @@ def ker {G H : groupe} (f : morphisme G H) : set G :=
 def im {G H : groupe} (f : morphisme G H) : set H :=
   {b : H | ∃ a : G, f a = b }
 
-def ens_reciproque {G H : groupe} (f : morphisme G H) (B: set H) :=
-  {a : G | f a ∈ B }
-
-def ens_image {G H : groupe} (f : morphisme G H) (A: set G) :=
-  {b : H | ∃ a ∈ A, f a = b}
-
-def comp {G H K: groupe} (f : morphisme G H) (g : morphisme H K) : morphisme G K := 
-  sorry
+lemma im_point_in_im {G H : groupe} (f : morphisme G H) (x:G)
+  : f x ∈ im f := by {apply Exists.intro x, refl}
 
 
-theorem ker_comp_eq_inv_ker {G H K: groupe} (f : morphisme G H) (g : morphisme H K) 
-  : ker (comp f g) = ens_reciproque f (ker g) :=
-  sorry
+theorem ker_comp_eq_inv_ker {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
+  : ker (g ∘₁ f) = im_recip f (ker g) := by {refl} 
+-- ↑ Par définition, x ∈ ker (g ∘ f) est égal à x ∈ f⁻¹ (ker g). Lean sait faire seul c: 
 
 theorem im_comp_eq_im_im {G H K: groupe} (f : morphisme G H) (g : morphisme H K) 
-  : im (comp f g) = ens_image g (im f) :=
-  sorry 
+  : im (g ∘₁ f) = ens_image g (im f) :=
+begin
+  apply set_eq, intro a, split; intro h,
+    { -- im (g ∘ f) ⊆ g (im f)
+      cases h with x hx, unfold ens_image,
+      apply Exists.intro (f x),
+      apply Exists.intro (im_point_in_im f x), rw comp_mor_fun_eq g f at hx, exact hx,
+    },
+    { -- g (im f) ⊆ im (g ∘ f)
+      cases h with x hx, cases hx with h₁ h₂,
+      cases h₁ with y hy,
+      rw [← hy, ←function.comp_app (g:H→K), ← comp_mor_fun_eq] at h₂,
+      rw ← h₂,
+      exact im_point_in_im _ y,
+    }
+end
 
-
-def isomorphisme {G H: groupe } (f : morphisme G H) :=
-  ∃ g : morphisme H G, (∀ a : G,  g (f a) = a)
 
 
 

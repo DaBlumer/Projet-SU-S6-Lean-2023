@@ -19,6 +19,18 @@ instance {α : Type*} : has_union (set α) :=
 instance {α : Type*} : has_inter (set α) :=
   ⟨λ A B, {x | x ∈ A ∧ x ∈ B}⟩
 
+lemma set_eq {α : Type*} (A B : set α) : (∀ a, a ∈ A ↔ a ∈ B) → A = B :=
+begin
+  intro fa,
+  apply funext, intro, apply propext, split,
+  exact (fa x).1, exact (fa x).2,
+end
+
+def im_dir {α : Type*} {β : Type*} (f : α → β) (A : set α) : set β :=
+  {b | ∃ a ∈ A, f a = b}
+def im_recip {α : Type*} {β : Type*} (f : α → β) (B : set β) : set α :=
+  {a | f a ∈ B}
+
 def prod_all {α : Type*} {β : Type*} [has_mul β] [has_one β] : (list α) → (α → β) →  β
   | [] _ := (1 : β)
   | (a :: l) F := (F a) * prod_all l F
