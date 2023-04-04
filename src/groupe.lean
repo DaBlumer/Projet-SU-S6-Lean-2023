@@ -284,6 +284,24 @@ lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
   rw neutre_gauche'
   end
 
+lemma inv_neutre_eq_neutre (G : groupe) : (1:G)⁻¹=1 := 
+  by {rw [G.mul_gauche_all _ _ 1, inv_droite, neutre_droite],}
+
+lemma eq_of_inv_eq (G : groupe) (a b : G) : (a⁻¹=b⁻¹) ↔ (a=b) :=
+  begin
+    split; intro h; try {rw h}, 
+    rw [←G.neutre_droite a⁻¹,mul_gauche_div_gauche] at h,
+    rw [inv_involution, ← mul_droite_div_droite, neutre_gauche'] at h,
+    rw h,
+  end
+
+lemma mul_right_inv_eq_one_of_eq (G : groupe) (a b : G) : (a=b) ↔ (a*b⁻¹ = 1) :=
+  begin
+  split;intro h,
+    rw h, exact inv_droite _ _,
+    rw [mul_droite_div_droite, inv_involution, neutre_gauche'] at h, exact h,
+  end
+
 lemma neutre_unique_fort (G : groupe) (e a : G) (h : e*a = a) : e = 1 :=
   by {rw [mul_droite_div_droite, inv_droite] at h, exact h}
 
@@ -1284,9 +1302,88 @@ def ker {G H : groupe} (f : morphisme G H) : set G :=
 def im {G H : groupe} (f : morphisme G H) : set H :=
   {b : H | ∃ a : G, f a = b }
 
-lemma im_point_in_im {G H : groupe} (f : morphisme G H) (x:G)
+-- ↓ Utile pour pruver qu'un élément appartient à l'image
+lemma im_point_in_im {G H : groupe} (f : morphisme G H) (x : G)
   : f x ∈ im f := by {apply Exists.intro x, refl}
+-- ↓ Utile pour prouver qu'un élément appartient au noyeau
+lemma im_one_in_ker {G H : groupe} (f : morphisme G H) (x : G)
+  : (f x = 1) = (x ∈ ker f) := rfl
+lemma in_ens_image {G H : groupe} (f : morphisme G H) (B : set H) (x : G)
+  : (f x ∈ B) = (x ∈ im_recip f B) := rfl 
 
+lemma ker_est_sous_groupe {G H : groupe} (f : morphisme G H)
+  : est_sous_groupe (ker f) :=
+begin 
+  split,
+  { -- stabilité de l'inverse
+    intros a h, rw ←im_one_in_ker at *,
+    rw mor_inv_inv_mor,
+    rw h,
+    rw [H.mul_droite_all _ _ 1, inv_gauche', neutre_gauche'],
+  }, split,
+  {
+    intros a ha b hb, 
+    rw ←im_one_in_ker at *, 
+    rw [mor_resp_mul, ha, hb, neutre_droite], 
+  },
+  exact mor_neutre_est_neutre,
+end
+
+lemma im_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (G' : sous_groupe G)
+  : est_sous_groupe (ens_image f G') := 
+begin
+  split, {
+    intros a tmp, cases tmp with pre_a tmp, cases tmp with a_in a_eq, 
+    apply Exists.intro pre_a⁻¹, apply Exists.intro (G'.inv_stab _ a_in),
+    rw mor_inv_inv_mor,
+    rw eq_of_inv_eq, exact a_eq,
+  }, split, {
+    intros a tmp_a b tmp_b,
+    cases tmp_a with pre_a tmp, cases tmp with a_in a_eq,
+    cases tmp_b with pre_b tmp, cases tmp with b_in b_eq,
+    apply Exists.intro (pre_a*pre_b), apply Exists.intro (G'.mul_stab _ a_in _ b_in),
+    rw [mor_resp_mul, a_eq, b_eq],
+  }, {
+    apply Exists.intro (1:G), apply exists.intro G'.contient_neutre,
+    exact mor_neutre_est_neutre,
+  }
+end
+
+lemma preim_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (H' : sous_groupe H)
+  : est_sous_groupe (im_recip f H') :=
+begin
+  split, {
+    intros a ha, rw ←in_ens_image at *,
+    rw mor_inv_inv_mor,
+    exact H'.inv_stab _ ha, 
+  }, split, {
+    intros a ha b hb, rw ←in_ens_image at *,
+    rw mor_resp_mul,
+    exact H'.mul_stab _ ha _ hb,
+  }, {
+    rw [←in_ens_image, mor_neutre_est_neutre], exact H'.contient_neutre,
+  }
+end
+
+lemma carac_mor_inj {G H : groupe} (f : morphisme G H) 
+  : function.injective f ↔ ker f = {(1:G)} :=
+begin
+  split, {
+    intro f_inj, apply set_eq, intro, split;intro h, 
+    rw ←im_one_in_ker at h, rw in_singleton, 
+    rw ← @mor_neutre_est_neutre _ _ f at h,
+    exact f_inj h,
+    rw in_singleton at h, rw ←im_one_in_ker, rw h, 
+    exact mor_neutre_est_neutre,
+  }, {
+    intro h, intros a₁ a₂ eq,
+    rw mul_right_inv_eq_one_of_eq at *,
+    rw [←mor_inv_inv_mor, ←mor_resp_mul] at eq,
+    rw [im_one_in_ker, h] at eq,
+    rw in_singleton at eq, 
+    exact eq,
+  }
+end
 
 theorem ker_comp_eq_inv_ker {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
   : ker (g ∘₁ f) = im_recip f (ker g) := by {refl} 
@@ -1310,8 +1407,7 @@ begin
     }
 end
 
-
-
+def centre {G : groupe} : set G := {g | ∀ h, g*h = h*g}
 
 end groupe
 

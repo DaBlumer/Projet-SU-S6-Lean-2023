@@ -26,6 +26,8 @@ begin
   exact (fa x).1, exact (fa x).2,
 end
 
+lemma in_singleton {α : Type*} (x y : α) : (y ∈ ({x} : set α)) = (y = x) := rfl
+
 def im_dir {α : Type*} {β : Type*} (f : α → β) (A : set α) : set β :=
   {b | ∃ a ∈ A, f a = b}
 def im_recip {α : Type*} {β : Type*} (f : α → β) (B : set β) : set α :=
