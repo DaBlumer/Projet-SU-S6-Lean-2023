@@ -228,5 +228,15 @@ def fin_zero_to_nat_sum {α : Type*} {n : ℕ}[has_add α] [has_zero α] (f : �
   | 0 := 0
   | (nat.succ n) := fin_zero_to_nat_sum n + f (n+1)
 
+section
+universe u
+
+instance {α : Type u} : has_coe_to_sort (set α) (Type u) := ⟨λ s, {x // x ∈ s}⟩
+lemma set_coe_eq_subtype {α : Type u} (s : set α) : ↥s = {x // x ∈ s} := rfl
+
+lemma set_subtype_ext {α : Type u} {s : set α} {a b : s} : (↑a : α) = ↑b ↔ a = b :=
+iff.intro subtype.eq (assume h, h ▸ rfl)
+
+end
 
 end generique

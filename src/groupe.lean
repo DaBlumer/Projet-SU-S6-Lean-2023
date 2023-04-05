@@ -107,6 +107,16 @@ instance appartient_sous_groupe {G: groupe}
   : has_mem G (sous_groupe G) :=
   ⟨λ x H, H.sous_ens x⟩ 
 
+lemma eq_in_ss_groupe_iff_eq {G : groupe} {H : sous_groupe G} (a b : H)
+  : ((a:G) = ↑b) ↔ (a = b) :=
+begin
+  split; intro p; try {rw p},
+  unfold coe at p, unfold lift_t at p, unfold has_lift_t.lift at p,
+  unfold coe_t at p, unfold has_coe_t.coe at p, unfold coe_b at p,
+  unfold has_coe.coe at p, apply subtype.eq, exact p,
+end
+
+
 -- Définition d'un morphisme de groupes
 structure morphisme (G H : groupe) :=
   (mor : G → H)
@@ -688,8 +698,12 @@ def mul_gauche_ens {G : groupe} (a : G) (H : set G) : set G :=
 def mul_droite_ens {G : groupe} (H : set G) (a : G) : set G :=
   {g : G | ∃ h ∈ H, g = h*a}
 
+
+local notation a ` *₂ `:51 H:51 :=  mul_gauche_ens a H
+local notation H ` *₃ `:51 a:51 := mul_droite_ens H a
+
 def est_distingue {G : groupe} (H : sous_groupe G) : Prop :=
-  ∀ a:G, mul_gauche_ens a H = mul_droite_ens H a
+  ∀ a:G, a *₂ H = H *₃ a
 
 
 lemma carac_est_distingue {G : groupe} (H' : sous_groupe G)
@@ -700,7 +714,7 @@ begin
     unfold est_distingue at dis_H,
     have hg := dis_H g,
     rw ←set_eq at hg, 
-    have h₁ : g*h ∈ mul_gauche_ens g ↑H',
+    have h₁ : g*h ∈ g *₂ ↑H',
       apply Exists.intro h, apply Exists.intro h_in_H, refl, 
     have h₂ := (hg (g*h)).1 h₁, 
     cases h₂ with h' tmp, cases tmp with h'_in_H h₃,
@@ -733,9 +747,9 @@ begin
 end
 
 def rel_gauche_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
-  λ x y : G, y ∈ mul_gauche_ens x H 
+  λ x y : G, y ∈ x *₂ H 
 def rel_droite_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
-  λ x y : G, y ∈ mul_droite_ens ↑H x 
+  λ x y : G, y ∈ ↑H *₃ x 
 
 local notation G ` %. `:35 H:34 := rel_gauche_mod H
 local notation H ` .% `:35 G:34 := rel_droite_mod H
@@ -748,6 +762,37 @@ lemma distingue_gde {G:groupe} {H : sous_groupe G} (dH : est_distingue H)
     rw rel_gauche_mod, unfold est_distingue at dH,
     apply funext, intro, apply funext, intro y,  rw dH, 
   end
+
+lemma rel_gauche_carac₁ {G : groupe} (H : sous_groupe G) (a b : G)
+  : rel_gauche_mod H a b ↔ a *₂ H = b *₂ H :=
+begin
+  split; intro p, {
+    cases p with h tmp, cases tmp with h_H b_ah,
+    rw ←set_eq, intro g,
+    split;intro g_in; cases g_in with h₂ tmp; cases tmp with h₂_H g_ab_h, {
+      have p := b_ah.symm, rw [mul_droite_div_droite] at p, rw p at g_ab_h,
+      existsi h⁻¹*h₂, existsi H.mul_stab _ (H.inv_stab _ h_H) _ h₂_H,
+      rw [g_ab_h, mul_assoc'],
+    }, {
+      rw b_ah at g_ab_h,
+      existsi h*h₂, existsi H.mul_stab _ h_H _ h₂_H,
+      rw [g_ab_h, mul_assoc'],
+    }
+  }, {
+    unfold rel_gauche_mod, rw p, 
+    existsi [(1:G), H.contient_neutre],
+    rw neutre_droite, 
+  }
+end
+
+lemma rel_gauche_carac₂ {G : groupe} (H : sous_groupe G) (a b : G) {h h' : H}
+  (p : a*h = b*h') : rel_gauche_mod H a b :=
+begin
+  have p' := p.symm,
+  rw [mul_droite_div_droite, mul_assoc'] at p',
+  existsi ((h:G)*(h':G)⁻¹), existsi (H.mul_stab _ h.property _ (H.inv_stab _ h'.property)), 
+  exact p',
+end
 
 lemma rel_gauche_refl {G : groupe} (H : sous_groupe G) (a : G) 
   : (G %. H) a a :=
@@ -823,7 +868,87 @@ instance g_has_quotient_gauche {G: groupe}  : has_quotient_gauche G (sous_groupe
   := ⟨λ H, quotient_gauche H⟩
 instance g_has_quotient_droite {G: groupe} : has_quotient_droite G (sous_groupe G)
   := ⟨λ H, quotient_droite H⟩
-def x (G : groupe) (H : sous_groupe G) := G/.H 
+ 
+local notation `⟦`:max a`⟧@`:max H := quot.mk (rel_gauche_mod H) a 
+
+def classes_equiv_gauche {G : groupe} (H : sous_groupe G) :=
+  {X // ∃ a : G, X = mul_gauche_ens a H}
+
+def elem_to_classe_gauche {G : groupe} (H : sous_groupe G)
+  (x : G) : classes_equiv_gauche H := 
+{
+  val := mul_gauche_ens x H,
+  property := by {apply Exists.intro x, refl,}
+}
+
+lemma e_to_cg_resp_rel {G : groupe} (H : sous_groupe G) (a b : G) (a_b : (G %. H) a b) 
+  : elem_to_classe_gauche H a = elem_to_classe_gauche H b :=
+begin
+  unfold elem_to_classe_gauche,
+  apply subtype.eq, simp, 
+  rw ← rel_gauche_carac₁, exact a_b,
+end
+
+def quot_to_classe_gauche {G : groupe} (H : sous_groupe G) : (G/.H) → classes_equiv_gauche H :=
+  quot.lift (elem_to_classe_gauche H) (e_to_cg_resp_rel H)
+
+def bij_classes_equiv_quot {G : groupe} (H : sous_groupe G)
+  : bijection (G /. H) (classes_equiv_gauche H) :=
+{
+  val := quot_to_classe_gauche H,
+  property :=
+  begin
+    split, { -- Injective
+      intros a₁ a₂ p, 
+      unfold quot_to_classe_gauche at p,
+      cases quot.exists_rep a₁ with g₁ g_a₁,
+      cases quot.exists_rep a₂ with g₂ g_a₂,
+      rw [←g_a₁, ←g_a₂] at *,
+      simp at p,
+      unfold elem_to_classe_gauche at p,
+      apply quot.sound,
+      rw subtype.mk.inj_eq at p,
+      rw rel_gauche_carac₁,
+      exact p,
+    }, { -- Surjective
+      intro B, 
+      cases B.property with b B_bH,
+      existsi (quot.mk _ b),
+      unfold quot_to_classe_gauche,
+      unfold elem_to_classe_gauche,
+      apply subtype.eq, simp,
+      rw B_bH,
+    }
+  end
+}
+
+lemma quot_to_classe_gauche_id {G : groupe} (H : sous_groupe G)
+  (a : G) : (quot_to_classe_gauche H (quot.mk _ a)).val = a *₂ H := rfl
+
+lemma quot_to_classe_gauche_id₂ {G : groupe} (H : sous_groupe G)
+  (a : G) : (quot_to_classe_gauche H (quot.mk _ a)) = ⟨a *₂ H, (quot_to_classe_gauche H (quot.mk _ a)).property⟩ := rfl
+
+lemma quot_to_classe_gauche_prop {G : groupe} {H : sous_groupe G}
+  : function.bijective (quot_to_classe_gauche H) := (bij_classes_equiv_quot H).property
+
+noncomputable def repr_quot {G : groupe} {H : sous_groupe G} (a : G/.H) : {g // (⟦g⟧@H) = a} :=
+  ⟨choose (quot.exists_rep a), prop_of_choose (quot.exists_rep a)⟩
+
+lemma class_of_repr_quot {G : groupe} {H : sous_groupe G} (a : G/.H)
+  : (⟦repr_quot a⟧@H) = a := (repr_quot a).property
+
+
+lemma quot_gauche_exact {G : groupe} {H : sous_groupe G} (a b : G)
+   (p : (⟦a⟧@H) = (⟦b⟧@H)) : rel_gauche_mod H a b :=
+begin
+  have p' := eq.refl (quot_to_classe_gauche _ (⟦a⟧@H)),
+  conv at p' {to_rhs, rw p},
+  rw [quot_to_classe_gauche_id₂] at p',
+  conv at p' {to_rhs, rw quot_to_classe_gauche_id₂},
+  rw subtype.mk.inj_eq at p', 
+  rw rel_gauche_carac₁,
+  exact p', 
+end
 
 def mul_partielle_gauche_ {G : groupe} {H : sous_groupe G} (a : G)
   : G → (G/.H) :=
@@ -875,7 +1000,6 @@ def inv_quotient_ {G : groupe} {H: sous_groupe G} (dH: est_distingue H)
   end
   )
 
-local notation `⟦`:max a`⟧@`:0 H := quot.mk (rel_gauche_mod H) a 
 
 lemma quot_of_mul_quot {G: groupe} {H: sous_groupe G} {dH : est_distingue H}
   : ∀ a b : G, mul_quotient_ dH (⟦a⟧@H) (⟦b⟧@H) = ⟦a*b⟧@H :=

@@ -365,7 +365,8 @@ theorem card_proof1 [h : est_fini E] {n : ℕ} (bij : bijection E (fin n))
 
 theorem eq_card_of_idempotents [h : est_fini E] [h' : est_fini F] (bij : bijection E F) 
   : cardinal E = cardinal F := 
-  sorry
+  sorry -- Todo pour ça : cardinal unique (si bij E (fin n), alors n = card E )
+
 
 def fini_bij_fini (G : Type*) (φ : G → F) (φ_inj : function.injective φ) : est_fini G :=
   {
@@ -385,3 +386,7 @@ def bij_univ_subtype (G : Type*) : bijection G {g:G // g ∈ @set.univ G} :=
         intro, apply Exists.intro b.val, simp, apply subtype.eq, simp,
       }
   }
+
+noncomputable def bijection_comm (E: Type*) (F : Type*) (f : bijection E F) : (bijection F E) :=
+  let f' := bijection_inv_of_bijection f in
+  bijection_of_bijection_inv ⟨f'.f_inv, f'.f, f'.inv_droite, f'.inv_gauche⟩
