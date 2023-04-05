@@ -1584,6 +1584,89 @@ end
 
 def centre {G : groupe} : set G := {g | ∀ h, g*h = h*g}
 
+
+instance ss_gr_fini_de_gr_fini {G : groupe} {H : sous_groupe G} [fG : est_fini G] : est_fini H :=
+{
+  majorant := fG.majorant, 
+  f := λ h, fG.f h,
+  f_inj :=
+  begin
+    intros a a' aa, 
+    simp at aa, 
+    have p := fG.f_inj aa,
+    exact (eq_in_ss_groupe_iff_eq _ _).1 p,
+  end
+}
+
+noncomputable instance quot_fini_de_gr_fini {G : groupe} {H : sous_groupe G} [fG : est_fini G] : est_fini (G /. H) :=
+{
+  majorant := fG.majorant,
+  f := λ X, fG.f (repr_quot X).val,
+  f_inj :=
+  begin
+    intros A A' AA, simp at AA,
+    have p := fG.f_inj AA,
+    rw [←(repr_quot A).property, ←(repr_quot A').property],
+    rw p, 
+  end
+}
+
+
+noncomputable def fun_gr_prod_ss_gr_quot {G : groupe} {H : sous_groupe G} (U : H × (G/.H)) : G
+  := repr_quot(U.2)*U.1
+
+/-
+Théorème 1.37 du cours
+La preuve ici consiste à exhiber une bijection entre G et (H × G/H):
+  - On se munit de repr_quot : G/H → G qui nous donne un représentant arbitraire pour chaque classe.
+  - On montre que la fonction qui à (h, X) repr_quot(X)*h est une bijection
+-/
+theorem theoreme_de_lagrange {G : groupe} (H : sous_groupe G) [fG : est_fini G]
+  : cardinal G = cardinal H * cardinal (G /. H) :=
+begin 
+  rw ← prod_of_cards, 
+  apply eq_card_of_idempotents, apply bijection_comm,
+  exact {
+    val := fun_gr_prod_ss_gr_quot, 
+    property :=
+    begin
+      split, { -- Preuve que c'est une injection
+        -- On introduit (h, X) et (h', X') tq f(h, X) = f(h', X')
+        intros a a',
+        cases a with h X, cases a' with h' X',
+        intro aa,
+        unfold fun_gr_prod_ss_gr_quot at aa, 
+
+        -- On montre que repr(X) et repr(X') sont équivalents et que donc X = X'
+        have aa_equiv : (⟦repr_quot X⟧@H)= (⟦repr_quot X'⟧@H),
+          apply quot.sound,
+          apply rel_gauche_carac₂,
+          exact aa, 
+        repeat {rw class_of_repr_quot at aa_equiv},
+        
+        -- On montre que h = h'
+        rw aa_equiv at *, 
+        rw ←mul_gauche_all at aa, 
+        simp at aa, rw eq_in_ss_groupe_iff_eq at aa,
+        rw aa, 
+      }, { -- Preuve que c'est une surjection
+        intro, 
+        let x := repr_quot(⟦b⟧@H),
+        have p : rel_gauche_mod H x b,
+          exact quot_gauche_exact _ _ x.property,
+        cases p with h hp, cases hp with h_H ph,
+        existsi (⟨⟨h, h_H⟩, ⟦b⟧@H⟩ : H × (G/.H)),
+        
+        have why : ∀ x y, fun_gr_prod_ss_gr_quot ⟨x, y⟩ = (repr_quot y)*x := λ x y, rfl, 
+        rw why,
+
+        conv {to_rhs, rw ph},
+        have why₂ : ((⟨h, h_H⟩:H):G) = h := rfl, rw why₂,
+      }
+    end
+  }
+end
+
 end groupe
 
 
