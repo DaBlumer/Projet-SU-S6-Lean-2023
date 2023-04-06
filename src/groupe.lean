@@ -24,7 +24,7 @@ membre de la structure et non comme paramètre du type groupe (à discuter)
 - Laisser la structure être une classe semble être plus pertinent que ce
 qui est fait maintenant ? (à discuter)
 -/
-structure groupe : Type (u+1) :=
+class groupe : Type (u+1) :=
   (ens : Type u)
   (mul : ens → ens → ens )
   (neutre : ens)
@@ -133,7 +133,22 @@ def comp_mor {G H K: groupe} (g : morphisme H K) (f : morphisme G H) : morphisme
     resp_mul := λ g₁ g₂, by {simp, rw [f.resp_mul, g.resp_mul]} 
   }
 
-local notation g `∘₁`:10 f := comp_mor g f
+local notation g `∘₁`:51 f := comp_mor g f
+
+lemma morphisme_eq_iff {G H : groupe} (f f' : morphisme G H)
+  : f = f' ↔ (f : G→H) = (f' : G→H) :=
+begin
+  split; intro p,
+    rw p,
+    unfold coe_fn at p, unfold has_coe_to_fun.coe at p,
+    cases f with f pf, cases f' with f' pf', simp at p,
+    simp [p],
+end
+
+lemma comp_mor_id {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
+  : ∀ x, (g∘₁f) x = g.mor (f.mor x) := λ x, rfl
+lemma mor_id {G H : groupe} (f : morphisme G H)
+  : ∀ x, f x = f.mor x := λ x, rfl
 
 section -- exemples d'utilisation transparente des coercions
 
@@ -310,6 +325,13 @@ lemma mul_right_inv_eq_one_of_eq (G : groupe) (a b : G) : (a=b) ↔ (a*b⁻¹ = 
   split;intro h,
     rw h, exact inv_droite _ _,
     rw [mul_droite_div_droite, inv_involution, neutre_gauche'] at h, exact h,
+  end
+
+lemma mul_left_inv_eq_one_of_eq (G : groupe) (a b : G) : (a=b) ↔ (b⁻¹*a = 1) :=
+  begin
+  split;intro h,
+    rw h, exact inv_gauche' _ _,
+    rw [mul_gauche_div_gauche, inv_involution, neutre_droite] at h, exact h,
   end
 
 lemma neutre_unique_fort (G : groupe) (e a : G) (h : e*a = a) : e = 1 :=
@@ -1046,6 +1068,21 @@ def groupe_quotient {G : groupe} (H : sous_groupe G) (dH : est_distingue H) : gr
 }
 
 
+local notation G ` /* `:35 dH:34 := @groupe_quotient G _ dH
+
+
+def mor_quotient {G : groupe} {H : sous_groupe G} (dH: est_distingue H) : morphisme G (G/*dH) :=
+{
+  mor := λ g, ⟦g⟧@H,
+  resp_mul := @quot_of_mul_quot G H dH,
+}
+
+lemma mor_quotient_id {G : groupe} {H : sous_groupe G} (dH: est_distingue H)
+  : ∀ a : G, mor_quotient dH a = ⟦a⟧@H := λ a, rfl
+
+lemma quot_of_mul_quot' {G : groupe} {H : sous_groupe G} (dH: est_distingue H)
+  : ∀ a b : G, (G/*dH).mul (⟦a⟧@H) (⟦b⟧@H) = (⟦a*b⟧@H) := @quot_of_mul_quot G H dH
+
 section
 
 -- Pour définir l'ordre, (∃ n : ℕ, x^(n:ℤ) = 1) n'est pas une proposition décidable en général
@@ -1666,6 +1703,45 @@ begin
     end
   }
 end
+
+lemma card_ss_groupe_div_card_groupe {G : groupe} (H : sous_groupe G) [fG : est_fini G]
+  : (cardinal H) ∣ (cardinal G) := Exists.intro (cardinal (G/.H)) (theoreme_de_lagrange H)
+
+
+
+theorem theoreme_de_factorisation {G G': groupe} {H : sous_groupe G} (f : morphisme G G')
+  (dH : est_distingue H) (H_ker : ∀ x : H, f x = 1): ∃! f' : morphisme (G/*dH) G', f = f' ∘₁ (mor_quotient dH) :=
+begin
+  have f_resp_rel_gauche : ∀ a b : G, rel_gauche_mod H a b → f a = f b,
+    intros a b pab,
+    cases pab with h tmp, cases tmp with h_H p, 
+    rw [G.mul_gauche_all _ _ a⁻¹, ←mul_assoc', inv_gauche',neutre_gauche'] at p,
+    apply eq.symm,
+    rw [mul_left_inv_eq_one_of_eq, ←mor_inv_inv_mor, ←mor_resp_mul],
+    rw p,
+    exact H_ker ⟨h, h_H⟩,
+  let f' : (G/*dH) → G' := (quot.lift f f_resp_rel_gauche),
+  have f'_resp_mul : ∀ A B : (G/*dH), f' (A*B) = f' A * f' B,
+    intro A, apply quot.ind, intro b, revert A, apply quot.ind, intro a,
+    repeat {rw ←mor_quotient_id dH}, rw ← mor_resp_mul, repeat {rw mor_quotient_id dH},
+    have why: ∀ x, f' (⟦x⟧@H) = (quot.lift f f_resp_rel_gauche) (⟦x⟧@H), intro,refl, 
+    repeat{rw [why, quot_lift_id f dH]},
+    exact f.resp_mul a b,
+  apply exists_unique.intro (⟨f', f'_resp_mul⟩ : morphisme (G/*dH) G'),
+  { -- preuve que f = f' ∘ cl 
+    rw morphisme_eq_iff, funext, 
+    rw comp_mor_id,
+    unfold mor_quotient,
+  }, { -- preuve de l'unicite
+    intros g pg,
+    rw morphisme_eq_iff, funext,
+    simp [mor_id],
+    have p₀ : (⟦repr_quot x⟧@H) = x:= class_of_repr_quot x,
+    rw ← p₀,
+    conv {to_lhs, rw [←mor_quotient_id dH, mor_id, ← comp_mor_id, ←pg]},
+  }
+end
+
 
 end groupe
 

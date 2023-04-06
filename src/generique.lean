@@ -237,6 +237,9 @@ lemma set_coe_eq_subtype {α : Type u} (s : set α) : ↥s = {x // x ∈ s} := r
 lemma set_subtype_ext {α : Type u} {s : set α} {a b : s} : (↑a : α) = ↑b ↔ a = b :=
 iff.intro subtype.eq (assume h, h ▸ rfl)
 
+lemma quot_lift_id {α : Type*} {β : Type*} {r : α→α→Prop} (f : α → β ) (f_resp : ∀ a b, r a b → f a = f b)
+  : ∀ a, (quot.lift f f_resp) (quot.mk r a) = f a := λ a, rfl
+
 end
 
 end generique
