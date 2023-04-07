@@ -765,23 +765,23 @@ def mul_droite_ens {G : groupe} (H : set G) (a : G) : set G :=
 local notation a ` *₂ `:51 H:51 :=  mul_gauche_ens a H
 local notation H ` *₃ `:51 a:51 := mul_droite_ens H a
 
-def est_distingue {G : groupe} (H : sous_groupe G) : Prop :=
-  ∀ a:G, a *₂ H = H *₃ a
+class est_distingue {G : groupe} (H : sous_groupe G) : Prop :=
+  (h : ∀ a:G, a *₂ H = H *₃ a)
 
 local notation H `⊲`:51 G := @est_distingue G H
 
-lemma triv_est_distingue (G : groupe) : ((↩{1}) ⊲ G) :=
+@[instance] lemma triv_est_distingue (G : groupe) : ((↩{1}) ⊲ G) :=
 begin
-  intro, rw ←set_eq, intro, split; intro p;
+  split, intro, rw ←set_eq, intro, split; intro p;
   cases p with h tmp; cases tmp with h_H peq; simp at h_H; rw in_singleton at h_H; rw h_H at *;
   rw [neutre_droite, ← G.neutre_gauche' a] at peq<|>rw [neutre_gauche', ← G.neutre_droite a] at peq;
   existsi (1:G); existsi ((↩{1}):sous_groupe G).contient_neutre; 
   exact peq, 
 end
 
-lemma groupe_est_distingue (G : groupe) : ((↩set.univ) ⊲ G) :=
+@[instance] lemma groupe_est_distingue (G : groupe) : ((↩set.univ) ⊲ G) :=
 begin 
-  intro, rw ←set_eq, intro, split; intro p;
+  split, intro, rw ←set_eq, intro, split; intro p;
   cases p with h tmp; cases tmp with h_H peq; simp at h_H,
     {existsi a*h*a⁻¹, existsi true.intro,
     rw [peq,mul_assoc', mul_assoc', inv_gauche', neutre_droite]},
@@ -795,7 +795,7 @@ lemma carac_est_distingue {G : groupe} (H' : sous_groupe G)
 begin
   split, {
     intros dis_H h h_in_H g,
-    unfold est_distingue at dis_H,
+    cases dis_H,
     have hg := dis_H g,
     rw ←set_eq at hg, 
     have h₁ : g*h ∈ g *₂ ↑H',
@@ -807,7 +807,7 @@ begin
     rw [mul_assoc', inv_droite, neutre_droite],
     exact h'_in_H,
   }, {
-    intro P, intro g,
+    intro P, split, intro g,
     rw ← set_eq, intro a,
     split;intro tmp; cases tmp with h tmp; cases tmp with h_in_H h_eq,
     {
@@ -846,7 +846,7 @@ lemma distingue_gde {G:groupe} {H : sous_groupe G} (dH : est_distingue H)
   : (G %. H) = (H .% G) :=
   begin
     unfold rel_droite_mod, 
-    rw rel_gauche_mod, unfold est_distingue at dH,
+    rw rel_gauche_mod, unfreezingI{cases dH},
     apply funext, intro, apply funext, intro y,  rw dH, 
   end
 
@@ -916,7 +916,7 @@ begin
   unfold rel_gauche_mod, unfold rel_droite_mod,
   apply funext,
   intro, apply funext, intro, 
-  rw dH,
+  rw dH.h,
 end
 
 lemma mul_induite_bien_def {G: groupe} {H: sous_groupe G} (dH: est_distingue H)
@@ -941,7 +941,7 @@ begin
     apply H.mul_stab, apply H.inv_stab, assumption, assumption, 
   have af : h₄⁻¹ * (a * h₁ * a⁻¹) * (a * b) ∈ mul_droite_ens (H:set G) (a*b), 
     apply Exists.intro (h₄⁻¹ * (a * h₁ * a⁻¹)), apply Exists.intro a₅, refl, 
-  rw ← dH (a*b) at af, cases af with h₆ a₆, cases a₆ with a₆ eq₄, 
+  rw ← dH.h (a*b) at af, cases af with h₆ a₆, cases a₆ with a₆ eq₄, 
   rw eq₄ at eq₁, 
   apply Exists.intro h₆, apply Exists.intro a₆, assumption,  
 end  
@@ -1102,7 +1102,7 @@ begin
   exact quot.ind this X, 
 end
 
-def groupe_quotient {G : groupe} (H : sous_groupe G) (dH : est_distingue H) : groupe :=
+def groupe_quotient {G : groupe} (H : sous_groupe G) [dH : est_distingue H] : groupe :=
 {
  ens := G /. H,
  mul := mul_quotient_ dH,
@@ -1133,20 +1133,20 @@ def groupe_quotient {G : groupe} (H : sous_groupe G) (dH : est_distingue H) : gr
 }
 
 
-local notation G ` /* `:35 dH:34 := @groupe_quotient G _ dH
+local notation G ` /* `:35 H:34 := groupe_quotient H
 
 
-def mor_quotient {G : groupe} {H : sous_groupe G} (dH: est_distingue H) : morphisme G (G/*dH) :=
+def mor_quotient {G : groupe} (H : sous_groupe G) [dH: est_distingue H] : morphisme G (G/*H) :=
 {
   mor := λ g, ⟦g⟧@H,
   resp_mul := @quot_of_mul_quot G H dH,
 }
 
-lemma mor_quotient_id {G : groupe} {H : sous_groupe G} (dH: est_distingue H)
-  : ∀ a : G, mor_quotient dH a = ⟦a⟧@H := λ a, rfl
+lemma mor_quotient_id {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
+  : ∀ a : G, mor_quotient H a = ⟦a⟧@H := λ a, rfl
 
-lemma quot_of_mul_quot' {G : groupe} {H : sous_groupe G} (dH: est_distingue H)
-  : ∀ a b : G, (G/*dH).mul (⟦a⟧@H) (⟦b⟧@H) = (⟦a*b⟧@H) := @quot_of_mul_quot G H dH
+lemma quot_of_mul_quot' {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
+  : ∀ a b : G, (G/*H).mul (⟦a⟧@H) (⟦b⟧@H) = (⟦a*b⟧@H) := @quot_of_mul_quot G H dH
 
 section
 
@@ -1702,7 +1702,7 @@ begin
     }
 end
 
-lemma preim_distingue_est_distingue {G H : groupe} (f : morphisme G H) {K : sous_groupe H}
+@[instance] lemma preim_distingue_est_distingue {G H : groupe} (f : morphisme G H) {K : sous_groupe H}
   (dK : K ⊲ H) : (↩(im_recip f K)) ⊲ G :=
 begin
   rw carac_est_distingue at dK ⊢, 
@@ -1713,7 +1713,7 @@ begin
 end
 
 
-lemma ker_est_distingue {G H : groupe} (f : morphisme G H) : ((↩(ker f)) ⊲ G) :=
+@[instance] lemma ker_est_distingue {G H : groupe} (f : morphisme G H) : ((↩(ker f)) ⊲ G) :=
 begin
   simp only [ker_est_preim_neutre f],
   apply preim_distingue_est_distingue f (triv_est_distingue H), 
@@ -1738,7 +1738,7 @@ lemma mor_vu_dans_im_id {G H : groupe} (f : morphisme G H) (a : G)
   : ((f↓) a).val = f a := rfl
 
 
-lemma im_distingue_est_distingue_dans_im {G H : groupe} (f : morphisme G H)
+@[instance] lemma im_distingue_est_distingue_dans_im {G H : groupe} (f : morphisme G H)
   {A : sous_groupe G} (dA : A ⊲ G) : (↩(ens_image (f↓) A)) ⊲ (↩(im f)) := 
 begin
   rw carac_est_distingue at dA ⊢,
@@ -1869,8 +1869,8 @@ lemma card_ss_groupe_div_card_groupe {G : groupe} (H : sous_groupe G) [fG : est_
 
 
 
-theorem theoreme_de_factorisation {G G': groupe} {H : sous_groupe G} (f : morphisme G G')
-  (dH : est_distingue H) (H_ker : ∀ x : H, f x = 1): ∃! f' : morphisme (G/*dH) G', f = f' ∘₁ (mor_quotient dH) :=
+theorem theoreme_de_factorisation {G G': groupe} (f : morphisme G G') (H : sous_groupe G)
+  [dH : est_distingue H] (H_ker : ∀ x : H, f x = 1): ∃! f' : morphisme (G/*H) G', f = f' ∘₁ (mor_quotient H) :=
 begin
   have f_resp_rel_gauche : ∀ a b : G, rel_gauche_mod H a b → f a = f b,
     intros a b pab,
@@ -1880,14 +1880,14 @@ begin
     rw [mul_left_inv_eq_one_of_eq, ←mor_inv_inv_mor, ←mor_resp_mul],
     rw p,
     exact H_ker ⟨h, h_H⟩,
-  let f' : (G/*dH) → G' := (quot.lift f f_resp_rel_gauche),
-  have f'_resp_mul : ∀ A B : (G/*dH), f' (A*B) = f' A * f' B,
+  let f' : (G/*H) → G' := (quot.lift f f_resp_rel_gauche),
+  have f'_resp_mul : ∀ A B : (G/*H), f' (A*B) = f' A * f' B,
     intro A, apply quot.ind, intro b, revert A, apply quot.ind, intro a,
-    repeat {rw ←mor_quotient_id dH}, rw ← mor_resp_mul, repeat {rw mor_quotient_id dH},
-    have why: ∀ x, f' (⟦x⟧@H) = (quot.lift f f_resp_rel_gauche) (⟦x⟧@H), intro,refl, 
+    repeat {rw ←mor_quotient_id}, rw ← mor_resp_mul, repeat {rw mor_quotient_id},
+    have why: ∀ x, f' (⟦x⟧@H) = (quot.lift f f_resp_rel_gauche) (⟦x⟧@H), intro,refl,
     repeat{rw [why, quot_lift_id f dH]},
     exact f.resp_mul a b,
-  apply exists_unique.intro (⟨f', f'_resp_mul⟩ : morphisme (G/*dH) G'),
+  apply exists_unique.intro (⟨f', f'_resp_mul⟩ : morphisme (G/*H) G'),
   { -- preuve que f = f' ∘ cl 
     rw morphisme_eq_iff, funext, 
     rw comp_mor_id,
@@ -1898,7 +1898,7 @@ begin
     simp [mor_id],
     have p₀ : (⟦repr_quot x⟧@H) = x:= class_of_repr_quot x,
     rw ← p₀,
-    conv {to_lhs, rw [←mor_quotient_id dH, mor_id, ← comp_mor_id, ←pg]},
+    conv {to_lhs, rw [←mor_quotient_id, mor_id, ← comp_mor_id, ←pg]},
   }
 end
 
