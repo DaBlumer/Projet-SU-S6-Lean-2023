@@ -122,6 +122,9 @@ lemma mem_ss_groupe_simp {G : groupe} {H : sous_groupe G}
         unfold has_lift_t.lift at *;  unfold coe_t at *; unfold has_coe_t.coe at *;
         unfold coe_b at *; unfold has_coe.coe at *; exact p,}
 
+lemma coe_mul_sous_groupe {G : groupe} {H : sous_groupe G} (a b : (H : groupe))
+  : (a*b).val = a.val*b.val := rfl
+
 
 -- Définition d'un morphisme de groupes
 structure morphisme (G H : groupe) :=
@@ -1579,6 +1582,8 @@ def im {G H : groupe} (f : morphisme G H) : set H :=
 -- ↓ Utile pour pruver qu'un élément appartient à l'image
 lemma im_point_in_im {G H : groupe} (f : morphisme G H) (x : G)
   : f x ∈ im f := by {apply Exists.intro x, refl}
+lemma im_point_in_im_ss_ens {G H : groupe} (f : morphisme G H) (A : set G) (x ∈ A)
+  : f x ∈ (ens_image f A) := by {existsi x, existsi H, refl,}
 -- ↓ Utile pour prouver qu'un élément appartient au noyeau
 lemma im_one_in_ker {G H : groupe} (f : morphisme G H) (x : G)
   : (f x = 1) ↔ (x ∈ ker f) := iff.intro id id
@@ -1588,7 +1593,11 @@ lemma in_ens_image {G H : groupe} (f : morphisme G H) (B : set H) (x : G)
 lemma ker_est_preim_neutre {G H : groupe} (f : morphisme G H)
   : ker f = im_recip f {1} := 
   by {rw ←set_eq, intro, split; intro p; rw [←im_one_in_ker, ←in_singleton (1:H), in_ens_image] at *; exact p,}
-
+lemma im_est_im_univ {G H : groupe} (f : morphisme G H)
+  : im f = ens_image f set.univ :=
+  by {rw ←set_eq, intro, unfold ens_image, unfold im_dir, unfold im, 
+      split; intro p; cases p with a₁ ha; existsi a₁, existsi (in_univ a₁), exact ha,
+      cases ha with _ p, exact p,}
 
 @[instance] lemma ker_est_sous_groupe {G H : groupe} (f : morphisme G H)
   : est_sous_groupe (ker f) :=
@@ -1626,6 +1635,13 @@ begin
     apply Exists.intro (1:G), apply exists.intro G'.contient_neutre,
     exact mor_neutre_est_neutre,
   }
+end
+
+@[instance] lemma im_est_ss_groupe {G H : groupe} (f : morphisme G H) 
+  : est_sous_groupe (im f) :=
+begin
+  rw im_est_im_univ, 
+  apply im_ss_groupe_est_ss_groupe f (↩set.univ),
 end
 
 @[instance] lemma preim_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (H' : sous_groupe H)
@@ -1701,6 +1717,41 @@ lemma ker_est_distingue {G H : groupe} (f : morphisme G H) : ((↩(ker f)) ⊲ G
 begin
   simp only [ker_est_preim_neutre f],
   apply preim_distingue_est_distingue f (triv_est_distingue H), 
+end
+
+def mor_vu_dans_im {G H : groupe} (f : morphisme G H) : morphisme G ↩(im f) :=
+{
+  mor := λ g, ⟨f g, im_point_in_im f g⟩,
+  resp_mul := λ g g',
+  begin
+    apply subtype.eq, rw coe_mul_sous_groupe,
+    have why : ∀ (α : Type*) (p : α → Prop) (a : α) (b : p a), 
+      (subtype.mk a b).val = a, intros, refl, 
+    repeat {rw why _  (λ a, a ∈ (↩im f).sous_ens)},
+    exact mor_resp_mul _ _,
+  end,
+}
+
+local notation f`↓`:51 := mor_vu_dans_im f
+
+lemma mor_vu_dans_im_id {G H : groupe} (f : morphisme G H) (a : G) 
+  : ((f↓) a).val = f a := rfl
+
+
+lemma im_distingue_est_distingue_dans_im {G H : groupe} (f : morphisme G H)
+  {A : sous_groupe G} (dA : A ⊲ G) : (↩(ens_image (f↓) A)) ⊲ (↩(im f)) := 
+begin
+  rw carac_est_distingue at dA ⊢,
+  intros h ph g,
+  rw [mem_ss_groupe_simp, sous_groupe_de_est_sous_groupe_id] at ph ⊢,
+  cases ph with h' tmp, cases tmp with h'_A ph',
+  rw ← ph', 
+  cases g.property with rg prg, rw ←mor_vu_dans_im_id at prg,
+  have p₂ := subtype.eq prg,
+  rw ← p₂,
+  rw [←mor_resp_mul, ←mor_inv_inv_mor, ←mor_resp_mul], 
+  apply im_point_in_im_ss_ens,
+  exact dA h' h'_A rg,
 end
 
 def centre (G : groupe) : set G := {g | ∀ h, g*h = h*g}
