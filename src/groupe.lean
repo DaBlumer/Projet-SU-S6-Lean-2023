@@ -1902,6 +1902,40 @@ begin
   }
 end
 
+def plongeon {G : groupe} {H : sous_groupe G} : morphisme H G := ⟨λ h, h.val, coe_mul_sous_groupe⟩
+
+
+theorem theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
+  : ∃! f' : morphisme (G/*(↩ker f)) ↩im f, f = plongeon ∘₁ f' ∘₁ (mor_quotient ↩(ker f)) :=
+begin
+  
+  -- On prend la fonction dont l'existence est démontrée par le théorème de factorisation 
+  have p₁ := theoreme_de_factorisation (f↓) (↩(ker (f))) 
+    (by {intro, apply subtype.eq,rw mor_vu_dans_im_id, exact x.property,}),
+  cases p₁ with f' tmp, cases tmp with pf' f'_unique, 
+  existsi f',
+
+  split;simp,
+  { -- On montre qu'elle satisfait : f = i∘f'∘cl 
+    rw morphisme_eq_iff at ⊢ pf', funext,
+    rw ←mor_vu_dans_im_id,
+    rw pf',
+    refl,  
+  }, { -- On montre l'unicité
+    intros g pg, 
+    have p₁ := f'_unique g, 
+    rw morphisme_eq_iff at ⊢ pf' pg p₁,
+    simp at p₁,
+    apply p₁,
+    rw morphisme_eq_iff, funext,
+    apply subtype.eq,
+    rw mor_vu_dans_im_id,
+    rw pg,
+    refl, 
+  }
+  
+
+end
 
 end groupe
 
