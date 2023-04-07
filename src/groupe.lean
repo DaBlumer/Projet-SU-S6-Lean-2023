@@ -61,7 +61,7 @@ Structure d'un sous_groupe :
 pour un groupe G, on fournit un sous ensemble et les preuves de stabilité de G.mul et G.inv
 -/
 structure sous_groupe (G: groupe) :=
-  (sous_ens : set G.ens)
+  (sous_ens : set G)
   (mul_stab : ∀ a b ∈ sous_ens, a * b ∈ sous_ens)
   (inv_stab : ∀ a ∈ sous_ens, a⁻¹ ∈ sous_ens)
   (contient_neutre : (1:G) ∈ sous_ens )
@@ -115,6 +115,12 @@ begin
   unfold coe_t at p, unfold has_coe_t.coe at p, unfold coe_b at p,
   unfold has_coe.coe at p, apply subtype.eq, exact p,
 end
+
+lemma mem_ss_groupe_simp {G : groupe} {H : sous_groupe G}
+  : ∀ a, (a ∈ H) ↔ (a ∈ (H : set G)) 
+  := by {intro, split;intro p; unfold has_mem.mem at *; unfold coe at *; unfold lift_t at *;
+        unfold has_lift_t.lift at *;  unfold coe_t at *; unfold has_coe_t.coe at *;
+        unfold coe_b at *; unfold has_coe.coe at *; exact p,}
 
 
 -- Définition d'un morphisme de groupes
@@ -571,8 +577,35 @@ lemma pow_pow {G : groupe} {n m : ℤ} (x : G) : (x^n)^m = (x^(n*m)) :=
     }
   end
 
-def est_sous_groupe {G: groupe} (A : set G) : Prop 
-  := (∀ a ∈ A, a⁻¹ ∈ A) ∧ (∀ a b ∈ A, a*b ∈ A) ∧ ((1:G) ∈ A)
+-- Cette classe permet de convertir automatiquement un ensemble qui satisfait
+-- les axiomes d'un sous_groupe comme sa structure de sous groupe sous jacente
+class est_sous_groupe {G: groupe} (A : set G) : Prop := 
+  (inv_stab : ∀ a ∈ A, a⁻¹ ∈ A)
+  (mul_stab : ∀ a b ∈ A, a*b ∈ A)
+  (contient_neutre : (1:G) ∈ A)
+
+-- Si on a une preuve qu'un sous ensemble A est un sous groupe, 
+-- cette fonction retourne la structure de sous_groupe sous jacente
+def sous_groupe_de_est_sous_groupe {G : groupe} (A : set G) 
+  [pA : est_sous_groupe A] : sous_groupe G := ⟨A, pA.2, pA.1, pA.3⟩
+
+-- ↓Notation pour le sous groupe. 
+local notation H `<₁`:51 G := @est_sous_groupe G H
+-- ↓Notation pour voir un sous ensemble de G.ens comme un sous groupe. '↩' s'écrit "\hook"
+local notation `↩`:52 A:= sous_groupe_de_est_sous_groupe A
+
+--↓ Exemple pour l'utilisation des notations : 
+--↓ -Ici comme on a la preuve h que A < G dans le contexte, ↩A représente le sous groupe
+--↓  d'ensemble A, et on peut définir un morphisme de ↩A verd G par exemple
+example (G : groupe) (A : set G) (h : A <₁ G) := morphisme (↩A) G 
+--↑ -Cette notation est là parce que je n'arrive pas à trouver un moyen de faire une 
+--↑  coercion automatique de A vers ↩A (car une coercion se fait de tout élément d'un
+--↑  type vers un élément d'un autre type, mais ici pas tous les ensembles peuvent être
+--↑  convertis en sous_groupe, seulement ceux qui satisfont les axiomes de stabilité.)
+
+@[simp] lemma sous_groupe_de_est_sous_groupe_id {G : groupe} (A : set G)
+  [pA : est_sous_groupe A] : ((↩A) : set G) = A := rfl
+
 
 lemma x_pow_in_sous_groupe {G: groupe} {x : G} {A : set G} {h : est_sous_groupe A}
   : x∈A → ∀ k : ℤ, x^k ∈ A :=
@@ -580,10 +613,10 @@ begin
   intros h₃ k,
   have result_for_nat : ∀ n : ℕ, x^n ∈ A,
     intro n, induction n with n hn, 
-    rw pow_zero_eq_one, exact h.2.2,
+    rw pow_zero_eq_one, exact h.contient_neutre,
     rw [coe_pow_nat,int.coe_nat_succ,mul_right_pow],
     rw coe_pow_nat at hn,
-    exact h.2.1 _ hn _ h₃, 
+    exact h.mul_stab _ hn _ h₃, 
   cases k,
     rw [← int.coe_nat_eq, ←coe_pow_nat], exact result_for_nat _,
     rw [← int.neg_of_nat_of_succ, pow_minus_eq_inv_pow],
@@ -604,14 +637,14 @@ begin
   split; unfold sous_groupe_engendre,
   begin -- preuve que ∀ a ∈ sous_groupe_engendre A, a⁻¹ ∈ sous_groupe_engendre A
     intros, unfold Inter at *,
-    intro B, exact B.property.left.left a (H B)
-  end, split, 
+    intro B, exact B.property.left.inv_stab a (H B)
+  end, 
   begin -- preuve que ∀ a b ∈ sous_groupe_engendre A, a*b ∈ sous_groupe_engendre A
     intros, unfold Inter at *,
-    intro B, exact B.property.left.right.left a (H B) b (H_1 B)
+    intro B, exact B.property.left.mul_stab a (H B) b (H_1 B)
   end,
   begin -- preuve que 1 ∈ sous_groupe_engendre A
-    unfold Inter, intro B, exact B.property.left.right.right
+    unfold Inter, intro B, exact B.property.left.contient_neutre
   end
 end
 
@@ -640,7 +673,7 @@ begin
         cases a'.snd, 
           {simp, rw G.inv_involution},
           {simp}
-    end, split, 
+    end,
     begin -- Preuve que la multiplication est stable
       intros, 
       cases H with decomp_a ha, cases H_1 with decomp_b hb, 
@@ -686,7 +719,7 @@ begin
     { -- 1 appartient à tous les sous groupes contenant A 
       intro x, intro hL, 
       unfold prod_all at hL, rw hL, 
-      exact i.property.1.2.2,  
+      exact i.property.1.contient_neutre,  
     },
     { -- Pour x_1,...,x_n ∈ A∪A⁻¹, x_1*x_2*...*x_n ∈ H pour tout H tq A ⊆ H < G   
       intro x, intro hL, 
@@ -700,7 +733,7 @@ begin
         have h₁ : e.fst.val ∈ i.val := (i.property.2) e.fst e.fst.property,
         have h₂ : (e.fst.val)⁻¹ ∈ i.val := i.property.1.1 _ h₁,
         rw hL,  
-        exact i.property.1.2.1 _ h₂ _ h₀, 
+        exact i.property.1.mul_stab _ h₂ _ h₀, 
       }, 
       {
         simp at hL, 
@@ -709,7 +742,7 @@ begin
           apply this, refl,
         have h₁ : e.fst.val ∈ i.val := (i.property.2) e.fst e.fst.property,
         rw hL,
-        exact i.property.1.2.1 _ h₁ _ h₀,
+        exact i.property.1.mul_stab _ h₁ _ h₀,
       }
     }
   }
@@ -727,6 +760,7 @@ local notation H ` *₃ `:51 a:51 := mul_droite_ens H a
 def est_distingue {G : groupe} (H : sous_groupe G) : Prop :=
   ∀ a:G, a *₂ H = H *₃ a
 
+local notation H `⊲`:51 G := @est_distingue G H
 
 lemma carac_est_distingue {G : groupe} (H' : sous_groupe G)
   : est_distingue H' ↔ ∀ h ∈ H', ∀ g : G, g*h*g⁻¹ ∈ H'  :=
@@ -1532,7 +1566,7 @@ begin
     rw mor_inv_inv_mor,
     rw h,
     rw [H.mul_droite_all _ _ 1, inv_gauche', neutre_gauche'],
-  }, split,
+  },
   {
     intros a ha b hb, 
     rw ←im_one_in_ker at *, 
@@ -1549,7 +1583,7 @@ begin
     apply Exists.intro pre_a⁻¹, apply Exists.intro (G'.inv_stab _ a_in),
     rw mor_inv_inv_mor,
     rw eq_of_inv_eq, exact a_eq,
-  }, split, {
+  }, {
     intros a tmp_a b tmp_b,
     cases tmp_a with pre_a tmp, cases tmp with a_in a_eq,
     cases tmp_b with pre_b tmp, cases tmp with b_in b_eq,
@@ -1568,7 +1602,7 @@ begin
     intros a ha, rw ←in_ens_image at *,
     rw mor_inv_inv_mor,
     exact H'.inv_stab _ ha, 
-  }, split, {
+  }, {
     intros a ha b hb, rw ←in_ens_image at *,
     rw mor_resp_mul,
     exact H'.mul_stab _ ha _ hb,
