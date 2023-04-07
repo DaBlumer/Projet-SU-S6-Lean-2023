@@ -1686,29 +1686,6 @@ begin
     }
 end
 
-lemma ker_est_distingue {G H : groupe} (f : morphisme G H) : ((↩(ker f)) ⊲ G) :=
-begin
-  intro, rw sous_groupe_de_est_sous_groupe_id, rw ←set_eq,
-  intro g, split; intro pg; cases pg with k tmp; cases tmp with k_K hk;
-  let K := ↩(ker f),
-  {
-    existsi a*k*a⁻¹, existsi ((im_one_in_ker f (a*k*a⁻¹)).1 (by {
-      rw [mor_resp_mul, mor_resp_mul],
-      rw ←im_one_in_ker at k_K, rw k_K,
-      rw [neutre_droite, ←mor_resp_mul,inv_droite, mor_neutre_est_neutre],
-    })),
-    repeat {rw mul_assoc'}, rw [inv_gauche', neutre_droite], exact hk,
-  },
-  {
-    existsi a⁻¹*k*a, existsi ((im_one_in_ker f (a⁻¹*k*a)).1 (by {
-      rw [mor_resp_mul, mor_resp_mul],
-      rw ←im_one_in_ker at k_K, rw k_K,
-      rw [neutre_droite, ←mor_resp_mul,inv_gauche', mor_neutre_est_neutre],
-    })),
-    repeat {rw ←mul_assoc'}, rw [inv_droite, neutre_gauche'], exact hk,
-  }
-end
-
 lemma preim_distingue_est_distingue {G H : groupe} (f : morphisme G H) {K : sous_groupe H}
   (dK : K ⊲ H) : (↩(im_recip f K)) ⊲ G :=
 begin
@@ -1719,6 +1696,12 @@ begin
   exact dK _ ph (f g), 
 end
 
+
+lemma ker_est_distingue {G H : groupe} (f : morphisme G H) : ((↩(ker f)) ⊲ G) :=
+begin
+  simp only [ker_est_preim_neutre f],
+  apply preim_distingue_est_distingue f (triv_est_distingue H), 
+end
 
 def centre (G : groupe) : set G := {g | ∀ h, g*h = h*g}
 
