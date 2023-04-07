@@ -243,4 +243,7 @@ lemma quot_lift_id {α : Type*} {β : Type*} {r : α→α→Prop} (f : α → β
 
 end
 
+lemma app_eq {α : Type*} {β : Type*} (f : α → β) {a b : α} : (a=b)→(f a = f b)
+  := by {intro h, rw h,}
+
 end generique

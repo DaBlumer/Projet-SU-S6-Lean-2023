@@ -124,7 +124,10 @@ lemma mem_ss_groupe_simp {G : groupe} {H : sous_groupe G}
 
 lemma coe_mul_sous_groupe {G : groupe} {H : sous_groupe G} (a b : (H : groupe))
   : (a*b).val = a.val*b.val := rfl
-
+lemma coe_sous_groupe {G : groupe} {H : sous_groupe G} (a : H) 
+  :  (a : G) =  a.val := rfl
+lemma coe_one_sous_groupe {G : groupe} {H : sous_groupe G}
+  : (1 : (H:groupe)).val = (1 : G) := rfl
 
 -- Définition d'un morphisme de groupes
 structure morphisme (G H : groupe) :=
@@ -152,6 +155,14 @@ begin
     unfold coe_fn at p, unfold has_coe_to_fun.coe at p,
     cases f with f pf, cases f' with f' pf', simp at p,
     simp [p],
+end
+
+lemma morphisme_eq_iff₂ {G H : groupe} (f f' : morphisme G H)
+  : f = f' ↔ ∀ g, f g = f' g :=
+begin
+  split; intro p,
+    rw p, intro g, refl,
+    rw morphisme_eq_iff, funext, exact p x,
 end
 
 lemma comp_mor_id {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
@@ -1148,6 +1159,31 @@ lemma mor_quotient_id {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
 lemma quot_of_mul_quot' {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
   : ∀ a b : G, (G/*H).mul (⟦a⟧@H) (⟦b⟧@H) = (⟦a*b⟧@H) := @quot_of_mul_quot G H dH
 
+lemma one_quot_is_class_one {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
+  : (1: G/*H) = ⟦1⟧@H := rfl
+
+lemma repr_quot_one_in {G : groupe} (H : sous_groupe G) [dH: est_distingue H]
+  : (repr_quot (1:G/*H)).val ∈ H :=
+begin
+  have p := (repr_quot (1:G/*H)).property,
+  rw one_quot_is_class_one at p ⊢,
+  have p₂ := quot_gauche_exact _ _ p,
+  cases p₂ with h tmp, cases tmp with h_H ph,
+  rw [G.mul_droite_all _ _ h⁻¹, mul_assoc', neutre_gauche', inv_droite, neutre_droite] at ph,
+  rw ←ph,
+  exact H.inv_stab _ h_H,
+end
+
+lemma class_one_iff {G : groupe} (H : sous_groupe G) [dH: est_distingue H] (a : G)
+  : (⟦a⟧@H) = (1:G/*H) ↔ a ∈ H :=
+begin
+  split; intro p,
+  rw one_quot_is_class_one at p, have p₂ := quot_gauche_exact _ _ p,
+  cases p₂ with h tmp, cases tmp with h_H ph,
+  rw (G.inv_unique ph.symm),
+  exact H.inv_stab _ h_H,
+  apply quot.sound, existsi a⁻¹, existsi H.inv_stab _ p, rw inv_droite, 
+end
 section
 
 -- Pour définir l'ordre, (∃ n : ℕ, x^(n:ℤ) = 1) n'est pas une proposition décidable en général
@@ -1530,6 +1566,9 @@ begin
   }
 end
 
+def sont_isomorphes (G G' : groupe) := ∃ f : morphisme G G', est_isomorphisme f
+local notation G `≋`:50 G' := sont_isomorphes G G'
+
 def End (G : groupe) := morphisme G G
 def Aut (G : groupe) := {f : morphisme G G // est_isomorphisme f}
 
@@ -1903,7 +1942,7 @@ begin
 end
 
 def plongeon {G : groupe} {H : sous_groupe G} : morphisme H G := ⟨λ h, h.val, coe_mul_sous_groupe⟩
-
+lemma plongeon_id {G : groupe} {H : sous_groupe G} (a : H) : plongeon a = (a : G):= rfl
 
 theorem theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
   : ∃! f' : morphisme (G/*(↩ker f)) ↩im f, f = plongeon ∘₁ f' ∘₁ (mor_quotient ↩(ker f)) :=
@@ -1933,9 +1972,36 @@ begin
     rw pg,
     refl, 
   }
-  
-
 end
+
+
+theorem iso_de_theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
+  : (G/*↩ker f) ≋ ↩im f :=
+begin
+  have p₁ := theoreme_isomorphisme₁ f, 
+  cases p₁ with f' tmp, cases tmp with p₁, 
+  existsi f', 
+  rw carac_est_isomorphisme,
+  simp [morphisme_eq_iff₂, comp_mor_fun_eq] at p₁,
+  split, { -- Injectif
+    rw [carac_mor_inj, ←set_eq], simp only [in_singleton, ←im_one_in_ker],
+    apply quot.ind, intro, 
+    split;intro p, 
+      have p₂ := app_eq plongeon p,
+      rw [←mor_quotient_id, ←p₁ a, plongeon_id, coe_sous_groupe, coe_one_sous_groupe] at p₂,
+      rw im_one_in_ker at p₂,
+      rw class_one_iff,
+      exact p₂,
+      rw [p, mor_neutre_est_neutre],
+  }, { -- Surjectif 
+    intro b, cases b.property with a fa_b,
+    existsi ⟦a⟧@_,
+    rw ←eq_in_ss_groupe_iff_eq, 
+    rw [←plongeon_id, ←mor_quotient_id],
+    rw [←p₁, fa_b, coe_sous_groupe], 
+  }
+end
+
 
 end groupe
 
