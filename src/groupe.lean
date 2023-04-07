@@ -606,6 +606,11 @@ example (G : groupe) (A : set G) (h : A <₁ G) := morphisme (↩A) G
 @[simp] lemma sous_groupe_de_est_sous_groupe_id {G : groupe} (A : set G)
   [pA : est_sous_groupe A] : ((↩A) : set G) = A := rfl
 
+@[instance] lemma triv_est_sous_groupe (G : groupe) : {1} <₁ G :=  
+  by { split; intros; rw in_singleton at *; rw H, rw inv_neutre_eq_neutre, rw neutre_gauche', rw H_1 }
+@[instance] lemma groupe_est_sous_groupe (G : groupe) : set.univ <₁ G :=
+  by {split; intros; exact in_univ _}
+
 
 lemma x_pow_in_sous_groupe {G: groupe} {x : G} {A : set G} {h : est_sous_groupe A}
   : x∈A → ∀ k : ℤ, x^k ∈ A :=
@@ -762,6 +767,26 @@ def est_distingue {G : groupe} (H : sous_groupe G) : Prop :=
 
 local notation H `⊲`:51 G := @est_distingue G H
 
+lemma triv_est_distingue (G : groupe) : ((↩{1}) ⊲ G) :=
+begin
+  intro, rw ←set_eq, intro, split; intro p;
+  cases p with h tmp; cases tmp with h_H peq; simp at h_H; rw in_singleton at h_H; rw h_H at *;
+  rw [neutre_droite, ← G.neutre_gauche' a] at peq<|>rw [neutre_gauche', ← G.neutre_droite a] at peq;
+  existsi (1:G); existsi ((↩{1}):sous_groupe G).contient_neutre; 
+  exact peq, 
+end
+
+lemma groupe_est_distingue (G : groupe) : ((↩set.univ) ⊲ G) :=
+begin 
+  intro, rw ←set_eq, intro, split; intro p;
+  cases p with h tmp; cases tmp with h_H peq; simp at h_H,
+    {existsi a*h*a⁻¹, existsi true.intro,
+    rw [peq,mul_assoc', mul_assoc', inv_gauche', neutre_droite]},
+    existsi a⁻¹*h*a, existsi true.intro,
+    rw [peq, ←mul_assoc', ←mul_assoc', inv_droite, neutre_gauche'],
+end
+
+
 lemma carac_est_distingue {G : groupe} (H' : sous_groupe G)
   : est_distingue H' ↔ ∀ h ∈ H', ∀ g : G, g*h*g⁻¹ ∈ H'  :=
 begin
@@ -801,6 +826,9 @@ begin
   apply Exists.intro ((carac_est_distingue H').1 dH _ H g),
   repeat {rw mul_assoc'}, rw [inv_gauche', neutre_droite],
 end
+
+
+--lemma triv_est_sous_groupe {G : groupe} {H' : sous_groupe G}
 
 def rel_gauche_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
   λ x y : G, y ∈ x *₂ H 
@@ -1553,11 +1581,16 @@ lemma im_point_in_im {G H : groupe} (f : morphisme G H) (x : G)
   : f x ∈ im f := by {apply Exists.intro x, refl}
 -- ↓ Utile pour prouver qu'un élément appartient au noyeau
 lemma im_one_in_ker {G H : groupe} (f : morphisme G H) (x : G)
-  : (f x = 1) = (x ∈ ker f) := rfl
+  : (f x = 1) ↔ (x ∈ ker f) := iff.intro id id
 lemma in_ens_image {G H : groupe} (f : morphisme G H) (B : set H) (x : G)
   : (f x ∈ B) = (x ∈ im_recip f B) := rfl 
 
-lemma ker_est_sous_groupe {G H : groupe} (f : morphisme G H)
+lemma ker_est_preim_neutre {G H : groupe} (f : morphisme G H)
+  : ker f = im_recip f {1} := 
+  by {rw ←set_eq, intro, split; intro p; rw [←im_one_in_ker, ←in_singleton (1:H), in_ens_image] at *; exact p,}
+
+
+@[instance] lemma ker_est_sous_groupe {G H : groupe} (f : morphisme G H)
   : est_sous_groupe (ker f) :=
 begin 
   split,
@@ -1575,7 +1608,7 @@ begin
   exact mor_neutre_est_neutre,
 end
 
-lemma im_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (G' : sous_groupe G)
+@[instance] lemma im_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (G' : sous_groupe G)
   : est_sous_groupe (ens_image f G') := 
 begin
   split, {
@@ -1595,7 +1628,7 @@ begin
   }
 end
 
-lemma preim_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (H' : sous_groupe H)
+@[instance] lemma preim_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (H' : sous_groupe H)
   : est_sous_groupe (im_recip f H') :=
 begin
   split, {
@@ -1653,8 +1686,67 @@ begin
     }
 end
 
-def centre {G : groupe} : set G := {g | ∀ h, g*h = h*g}
+lemma ker_est_distingue {G H : groupe} (f : morphisme G H) : ((↩(ker f)) ⊲ G) :=
+begin
+  intro, rw sous_groupe_de_est_sous_groupe_id, rw ←set_eq,
+  intro g, split; intro pg; cases pg with k tmp; cases tmp with k_K hk;
+  let K := ↩(ker f),
+  {
+    existsi a*k*a⁻¹, existsi ((im_one_in_ker f (a*k*a⁻¹)).1 (by {
+      rw [mor_resp_mul, mor_resp_mul],
+      rw ←im_one_in_ker at k_K, rw k_K,
+      rw [neutre_droite, ←mor_resp_mul,inv_droite, mor_neutre_est_neutre],
+    })),
+    repeat {rw mul_assoc'}, rw [inv_gauche', neutre_droite], exact hk,
+  },
+  {
+    existsi a⁻¹*k*a, existsi ((im_one_in_ker f (a⁻¹*k*a)).1 (by {
+      rw [mor_resp_mul, mor_resp_mul],
+      rw ←im_one_in_ker at k_K, rw k_K,
+      rw [neutre_droite, ←mor_resp_mul,inv_gauche', mor_neutre_est_neutre],
+    })),
+    repeat {rw ←mul_assoc'}, rw [inv_droite, neutre_gauche'], exact hk,
+  }
+end
 
+lemma preim_distingue_est_distingue {G H : groupe} (f : morphisme G H) {K : sous_groupe H}
+  (dK : K ⊲ H) : (↩(im_recip f K)) ⊲ G :=
+begin
+  rw carac_est_distingue at dK ⊢, 
+  intros h ph g, rw mem_ss_groupe_simp at ph ⊢,
+  rw [sous_groupe_de_est_sous_groupe_id, ←in_ens_image] at ph ⊢,
+  repeat {rw mor_resp_mul}, rw mor_inv_inv_mor,
+  exact dK _ ph (f g), 
+end
+
+
+def centre (G : groupe) : set G := {g | ∀ h, g*h = h*g}
+
+@[instance] lemma centre_est_sous_groupe (G : groupe) : centre G <₁ G := 
+begin
+  split, {
+    intros a pa, intro h,
+    rw [G.mul_gauche_all _ _ a, ←mul_assoc', inv_droite, neutre_gauche'],
+    rw [G.mul_droite_all _ _ a, ← mul_assoc', G.mul_assoc' _ _ a],
+    rw [inv_gauche', neutre_droite],
+    exact (pa h).symm, 
+  }, {
+    intros a pa b pb, intro h,
+    rw [mul_assoc', pb h, ←mul_assoc', pa h, mul_assoc'],
+  }, {
+    intro h, rw [neutre_droite, neutre_gauche'],
+  }
+end
+
+lemma centre_est_distingue (G : groupe) : (↩(centre G)) ⊲ G :=
+begin
+  rw carac_est_distingue,
+  intros h h_comm g,
+  rw [mem_ss_groupe_simp, sous_groupe_de_est_sous_groupe_id] at h_comm ⊢,
+  rw ←h_comm g,
+  rw [mul_assoc',inv_droite,neutre_droite],
+  exact h_comm,
+end
 
 instance ss_gr_fini_de_gr_fini {G : groupe} {H : sous_groupe G} [fG : est_fini G] : est_fini H :=
 {

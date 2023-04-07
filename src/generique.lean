@@ -29,6 +29,7 @@ begin
 end
 
 lemma in_singleton {α : Type*} (x y : α) : (y ∈ ({x} : set α)) = (y = x) := rfl
+lemma in_univ {α : Type*} (x : α) : x ∈  @set.univ α := true.intro
 
 def im_dir {α : Type*} {β : Type*} (f : α → β) (A : set α) : set β :=
   {b | ∃ a ∈ A, f a = b}
