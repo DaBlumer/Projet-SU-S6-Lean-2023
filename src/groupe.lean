@@ -107,6 +107,15 @@ instance appartient_sous_groupe {G: groupe}
   : has_mem G (sous_groupe G) :=
   ⟨λ x H, H.sous_ens x⟩ 
 
+instance sous_sous_groupe_to_sous_groupe {G : groupe} {H : sous_groupe G}
+  : has_coe (sous_groupe H) (sous_groupe G) :=
+  ⟨λ K, {
+    sous_ens := {x | x∈H ∧ ∀ h : x∈H, (⟨x, h⟩: H)∈K},
+    mul_stab := λa ha b hb, ⟨H.mul_stab _ ha.1 _ hb.1, λ h, K.mul_stab _ (ha.2 ha.1) _ (hb.2 hb.1)⟩, 
+    inv_stab := λa ha, ⟨H.inv_stab _ ha.1, λ h, K.inv_stab _ (ha.2 ha.1)⟩,
+    contient_neutre := ⟨H.contient_neutre, λ h, K.contient_neutre⟩
+  }⟩
+
 lemma eq_in_ss_groupe_iff_eq {G : groupe} {H : sous_groupe G} (a b : H)
   : ((a:G) = ↑b) ↔ (a = b) :=
 begin
@@ -128,6 +137,53 @@ lemma coe_sous_groupe {G : groupe} {H : sous_groupe G} (a : H)
   :  (a : G) =  a.val := rfl
 lemma coe_one_sous_groupe {G : groupe} {H : sous_groupe G}
   : (1 : (H:groupe)).val = (1 : G) := rfl
+
+def sous_groupe_to_sous_sous_groupe {G : groupe} {H : sous_groupe G} 
+  {K: sous_groupe G} {h : (K:set G) ⊆ (H: set G)} : sous_groupe H := 
+{
+  sous_ens := {g | g.val ∈ K},
+  mul_stab := λ a pa b pb, K.mul_stab _ pa _ pb,
+  inv_stab := λ a pa, K.inv_stab _ pa,
+  contient_neutre := K.contient_neutre, 
+}
+local notation K `↓`:51 KinH := @sous_groupe_to_sous_sous_groupe _ _ K KinH 
+example (G : groupe) (H K : sous_groupe G) (KinH: (K:set G) ⊆ (H:set G)) := (K↓KinH)
+
+lemma ss_gr_of_ss_ss_gr_sub {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
+  : ((K : sous_groupe G) : set G) ⊆ (H : set G) := λ x px, px.1
+
+
+lemma sous_groupe_down_ens {G : groupe} {H K: sous_groupe G}  (KinH : (K:set G) ⊆ (H: set G))
+  : ((K↓KinH): set ((H : groupe) : Type*)) = {x | x.val ∈ K} := rfl
+lemma sous_groupe_up_ens {G : groupe} {H : sous_groupe G} (K : sous_groupe H)
+  : ((K : sous_groupe G) : set G) = {x | x∈H ∧ ∀p:x∈H, (⟨x,p⟩:H)∈K} := rfl
+lemma sous_groupe_eq_iff {G : groupe} {H H': sous_groupe G}
+  : H = H' ↔ (H:set G) = (H':set G) :=
+begin
+  split;intro p, rw p,
+  unfold coe lift_t has_lift_t.lift coe_t has_coe_t.coe coe_b has_coe.coe at p,
+  cases H, cases H', simp at p ⊢, rw p,
+end 
+
+lemma sous_groupe_up_down {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
+  : ((K : sous_groupe G)↓(ss_gr_of_ss_ss_gr_sub K)) = K :=
+begin
+  rw [sous_groupe_eq_iff, ←set_eq], intro a,
+  rw [sous_groupe_down_ens (ss_gr_of_ss_ss_gr_sub K)],
+  split; intro p,
+    rw ←subtype_eq a p.1, exact p.2 p.1,
+    exact ⟨a.property, λ pp, by{have : pp=a.property :=rfl, rw this, cases a, exact p,}⟩, 
+end
+
+lemma sous_groupe_down_up {G : groupe} {H K: sous_groupe G} (KinH: (K:set G) ⊆ (H:set G))
+  : ((K↓KinH) : sous_groupe G) = K :=
+begin
+  rw [sous_groupe_eq_iff, ←set_eq], intro a,
+  rw sous_groupe_up_ens,  
+  split; intro p,
+    exact p.2 p.1,
+    exact ⟨(KinH _ p), (λ_, p)⟩, 
+end
 
 -- Définition d'un morphisme de groupes
 structure morphisme (G H : groupe) :=

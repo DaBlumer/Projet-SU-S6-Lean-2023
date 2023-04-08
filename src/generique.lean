@@ -245,5 +245,9 @@ end
 
 lemma app_eq {α : Type*} {β : Type*} (f : α → β) {a b : α} : (a=b)→(f a = f b)
   := by {intro h, rw h,}
+lemma subtype_eq {α : Type*} {p : α → Prop} (a : subtype p) 
+  : ∀ h : p a, (⟨a.val, h⟩:subtype p) = a := by {intro, have w : h = a.2 := rfl, rw w, cases a, simp,}
+lemma subtype_propeq {α : Type*} {p : α → Prop} (a : subtype p) {P : subtype p → Prop}
+  : ∀ h : p a, P ⟨a.val, h⟩ ↔ P a := by {intro, rw subtype_eq,}
 
 end generique
