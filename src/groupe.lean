@@ -107,6 +107,11 @@ instance appartient_sous_groupe {G: groupe}
   : has_mem G (sous_groupe G) :=
   ⟨λ x H, H.sous_ens x⟩ 
 
+class sous_groupe_incl {G : groupe} (H K : sous_groupe G) : Prop :=
+  (h : (H:set G) ⊆ K)
+local notation H `⊆₁`:52 K := sous_groupe_incl H K
+
+
 instance sous_sous_groupe_to_sous_groupe {G : groupe} {H : sous_groupe G}
   : has_coe (sous_groupe H) (sous_groupe G) :=
   ⟨λ K, {
@@ -140,23 +145,23 @@ lemma coe_sous_groupe₂ {G : groupe} {H : sous_groupe G} (a : G) (a_H : a∈H)
 lemma coe_one_sous_groupe {G : groupe} {H : sous_groupe G}
   : (1 : (H:groupe)).val = (1 : G) := rfl
 
-def sous_groupe_to_sous_sous_groupe {G : groupe} {H : sous_groupe G} 
-  {K: sous_groupe G} {h : (K:set G) ⊆ (H: set G)} : sous_groupe H := 
+def sous_groupe_to_sous_sous_groupe {G : groupe} (H : sous_groupe G) 
+  (K: sous_groupe G) [p : K ⊆₁ H] : sous_groupe H := 
 {
   sous_ens := {g | g.val ∈ K},
   mul_stab := λ a pa b pb, K.mul_stab _ pa _ pb,
   inv_stab := λ a pa, K.inv_stab _ pa,
   contient_neutre := K.contient_neutre, 
 }
-local notation K `↘`:53 KinH := @sous_groupe_to_sous_sous_groupe _ _ K KinH 
-example (G : groupe) (H K : sous_groupe G) (KinH: (K:set G) ⊆ (H:set G)) := (K↘KinH)
+local notation K `↘`:65 H:65 := sous_groupe_to_sous_sous_groupe H K 
+example (G : groupe) (H K : sous_groupe G) (KinH: (K ⊆₁ H)) := (K↘H)
 
-lemma ss_gr_of_ss_ss_gr_sub {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
-  : ((K : sous_groupe G) : set G) ⊆ (H : set G) := λ x px, px.1
+@[instance] lemma ss_gr_of_ss_ss_gr_sub {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
+  : (K : sous_groupe G) ⊆₁ H := ⟨λ x px, px.1⟩
 
 
-lemma sous_groupe_down_ens {G : groupe} {H K: sous_groupe G}  (KinH : (K:set G) ⊆ (H: set G))
-  : ((K↘KinH): set ((H : groupe) : Type*)) = {x | x.val ∈ K} := rfl
+lemma sous_groupe_down_ens {G : groupe} {H K: sous_groupe G}  (KinH : K ⊆₁ H)
+  : ((K↘H): set ((H : groupe) : Type*)) = {x | x.val ∈ K} := rfl
 lemma sous_groupe_up_ens {G : groupe} {H : sous_groupe G} (K : sous_groupe H)
   : ((K : sous_groupe G) : set G) = {x | x∈H ∧ ∀p:x∈H, (⟨x,p⟩:H)∈K} := rfl
 lemma sous_groupe_eq_iff {G : groupe} {H H': sous_groupe G}
@@ -168,7 +173,7 @@ begin
 end 
 
 lemma sous_groupe_up_down {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
-  : ((K : sous_groupe G)↘(ss_gr_of_ss_ss_gr_sub K)) = K :=
+  : ((K : sous_groupe G)↘H) = K :=
 begin
   rw [sous_groupe_eq_iff, ←set_eq], intro a,
   rw [sous_groupe_down_ens (ss_gr_of_ss_ss_gr_sub K)],
@@ -177,14 +182,14 @@ begin
     exact ⟨a.property, λ pp, by{have : pp=a.property :=rfl, rw this, cases a, exact p,}⟩, 
 end
 
-lemma sous_groupe_down_up {G : groupe} {H K: sous_groupe G} (KinH: (K:set G) ⊆ (H:set G))
-  : ((K↘KinH) : sous_groupe G) = K :=
+lemma sous_groupe_down_up {G : groupe} {H K: sous_groupe G} (KinH: K ⊆₁ H)
+  : (K↘H : sous_groupe G) = K :=
 begin
   rw [sous_groupe_eq_iff, ←set_eq], intro a,
   rw sous_groupe_up_ens,  
   split; intro p,
     exact p.2 p.1,
-    exact ⟨(KinH _ p), (λ_, p)⟩, 
+    exact ⟨(KinH.h _ p), (λ_, p)⟩, 
 end
 
 -- Définition d'un morphisme de groupes
@@ -664,7 +669,7 @@ def sous_groupe_de_est_sous_groupe {G : groupe} (A : set G)
 -- ↓Notation pour le sous groupe. 
 local notation H `<₁`:51 G := @est_sous_groupe G H
 -- ↓Notation pour voir un sous ensemble de G.ens comme un sous groupe. '↩' s'écrit "\hook"
-local notation `↩`:52 A:= sous_groupe_de_est_sous_groupe A
+local notation `↩`:56 A:56 := sous_groupe_de_est_sous_groupe A
 
 --↓ Exemple pour l'utilisation des notations : 
 --↓ -Ici comme on a la preuve h que A < G dans le contexte, ↩A représente le sous groupe
@@ -907,7 +912,7 @@ end
 
 
 @[instance] lemma distingue_down_est_distingue {G : groupe} {H K : sous_groupe G}
-  (HinK : (H:set G) ⊆ K) [dH : est_distingue H] : est_distingue (H↘HinK) :=
+  (HinK : H ⊆₁ K) [dH : est_distingue H] : est_distingue (H↘K) :=
 begin
   rw carac_est_distingue,
   intros k hk g,
@@ -1230,7 +1235,7 @@ def groupe_quotient {G : groupe} (H : sous_groupe G) [dH : est_distingue H] : gr
 }
 
 
-local notation G ` /* `:35 H:34 := @groupe_quotient G H _
+local notation G ` /* `:55 H:55 := @groupe_quotient G H _
 
 
 def mor_quotient {G : groupe} (H : sous_groupe G) [dH: est_distingue H] : morphisme G (G/*H) :=
@@ -1661,7 +1666,7 @@ end
 
 
 def sont_isomorphes (G G' : groupe) := ∃ f : morphisme G G', est_isomorphisme f
-local notation G `≋`:50 G' := sont_isomorphes G G'
+local notation G `≋`:40 G' := sont_isomorphes G G'
 
 lemma sont_isomorphes_symm (G G' : groupe) : (G ≋ G') ↔ (G' ≋ G) :=
 begin
@@ -2138,12 +2143,13 @@ end
 -- Pour H < G et K ⊲ G, on définit HK < G et on montre que K∩H ⊲ G
 def ss_groupe_mul_ss_groupe {G : groupe} (H K : sous_groupe G)
   : set G :=  {x | ∃ (h∈H) (k∈K), x = h*k}
-local notation H `*₁`:51 K := ss_groupe_mul_ss_groupe H K
+local notation H `*₀`:57 K:57 := ss_groupe_mul_ss_groupe H K
+local notation H `⬝`:67 K:67 := (↩H*₀K)
 
 @[instance] lemma ss_mul_distingue_est_sous_groupe {G : groupe} (H K : sous_groupe G)
-  [est_distingue K] : est_sous_groupe (H*₁K) :=
+  [est_distingue K] : est_sous_groupe (H*₀K) :=
 begin
-  have p₁ : (H*₁K) = im_recip (mor_quotient K) (ens_image (mor_quotient K) H),
+  have p₁ : (H*₀K) = im_recip (mor_quotient K) (ens_image (mor_quotient K) H),
     rw ←set_eq, intro, split; intro p, 
       { -- HK ⊆ cl⁻¹(cl(H)) 
         cases p with h tmp, cases tmp with h_H tmp,
@@ -2168,44 +2174,46 @@ begin
   exact p₂,
 end
 
-lemma H_inclus_HK {G : groupe} (H K : sous_groupe G)
-  [est_distingue K] : (H:set G)⊆(↩H*₁K) :=
+@[instance] lemma H_inclus_HK {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : H ⊆₁ (H⬝K) :=
 begin
-  intros h h_H, rw sous_groupe_de_est_sous_groupe_id,
+  split, intros h h_H, rw sous_groupe_de_est_sous_groupe_id,
   existsi [h, h_H, (1:G), K.contient_neutre], rw neutre_droite,
 end
 
-lemma K_inclus_HK {G : groupe} (H K : sous_groupe G)
-  [est_distingue K] : (K:set G)⊆(↩(H*₁K)) :=
+@[instance] lemma K_inclus_HK {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : K ⊆₁ (H⬝K) :=
 begin
-  intros k k_K, rw sous_groupe_de_est_sous_groupe_id,
+  split, intros k k_K, rw sous_groupe_de_est_sous_groupe_id,
   existsi [(1:G), H.contient_neutre, k, k_K], rw neutre_gauche',
 end
 
-lemma KiH_inclus_HK {G : groupe} (H K : sous_groupe G)
-  [est_distingue K] : ((K:set G)∩H) ⊆ (↩(H*₁K)) := λ a pa, K_inclus_HK _ _ _ pa.1
+instance intersection_sous_groupes {G : groupe} : has_inter (sous_groupe G) := ⟨λ H K, ↩((H : set G)∩K)⟩ 
 
-lemma KiH_inclus_H {G : groupe} (H K : sous_groupe G)
-  [est_distingue K] : ((K:set G)∩H) ⊆ H := λ _ pg, pg.2
+@[instance] lemma KiH_inclus_HK {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : (K ∩ H) ⊆₁ (H⬝K) := by {split, intros a pa, exact (K_inclus_HK _ _).h _ pa.1}
+
+@[instance] lemma KiH_inclus_H {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : (K∩H) ⊆₁ H := by {split, intros g pg, exact pg.2}
 
 -- Le morphisme naturel de H vers HK
-def injection_H_HK {G : groupe} (H K : sous_groupe G) [est_distingue K] : morphisme H (↩H*₁K) :=
+def injection_H_HK {G : groupe} (H K : sous_groupe G) [est_distingue K] : morphisme H (H⬝K) :=
 {
-  mor := λ h, ⟨h.val, H_inclus_HK _ _ _ h.property⟩,
+  mor := λ h, ⟨h.val, (H_inclus_HK _ _).h _ h.property⟩,
   resp_mul := begin
     intros, 
     apply subtype.eq,
-    rw [@coe_mul_sous_groupe _ (↩H*₁K), coe_mul_sous_groupe],
+    rw [@coe_mul_sous_groupe _ (H⬝K), coe_mul_sous_groupe],
   end
 }
 
 -- La suite p : H → HK → HK/K de la preuve du polycopié
 def suite_comp_thm_iso₂ {G : groupe} (H K : sous_groupe G) [dK : est_distingue K]
-  : morphisme H ((↩H*₁K)/*(K↘(K_inclus_HK _ _))) 
-  := (mor_quotient (K↘(K_inclus_HK _ _))) ∘₁ (injection_H_HK _ _)
+  : morphisme H ((H⬝K) /* K↘(H⬝K))
+  := (mor_quotient (K↘(↩H⬝K))) ∘₁ (injection_H_HK _ _)
 
 lemma ker_suite_comp_thm_iso₂ {G : groupe} (H K : sous_groupe G) [dK : est_distingue K]
-  : ((↩(K:set G)∩H)↘(KiH_inclus_H H K)) = ↩(ker (suite_comp_thm_iso₂ H K)) :=
+  : ((K∩H)↘H) = ↩(ker (suite_comp_thm_iso₂ H K)) :=
 begin
   rw [sous_groupe_eq_iff, sous_groupe_down_ens, sous_groupe_de_est_sous_groupe_id],
   rw ←set_eq, intro h, split;intro p;
@@ -2225,14 +2233,14 @@ begin
   unfold suite_comp_thm_iso₂,  
   rw [comp_mor_fun_eq, function.comp_app, mor_quotient_id,←p₁],
   apply quot.sound,
-  existsi (⟨⟨k, K_inclus_HK _ _ _ k_K⟩, k_K⟩:(K↘K_inclus_HK _ _)).val,
+  existsi (⟨⟨k, (K_inclus_HK _ _).h _ k_K⟩, k_K⟩: K↘(H⬝K)).val,
   existsi k_K,
   apply subtype.eq,
   exact phk,
 end
 
 @[instance] lemma K_inter_H_distingue_H {G : groupe} (H K : sous_groupe G)
-  [dK : est_distingue K] : est_distingue ((↩(K:set G)∩H)↘(KiH_inclus_H H K)) :=
+  [dK : est_distingue K] : est_distingue ((K∩H)↘H) :=
 begin
   have ker_p_distingue := ker_est_distingue (suite_comp_thm_iso₂ H K),
   rw ←ker_suite_comp_thm_iso₂ at ker_p_distingue, 
@@ -2257,12 +2265,12 @@ begin
 end
 
 theorem theoreme_isomorphisme₂ {G : groupe} (H K : sous_groupe G) [dK : est_distingue K]
-  : (H/*((↩(K:set G)∩H)↘(KiH_inclus_H H K))) ≋ ((↩(H*₁K))/*(K↘K_inclus_HK H K)) :=
+  : H /* (K∩H)↘H ≋ (H⬝K) /* K↘(H⬝K) :=
 begin
-  have h₂ :  (↩ im (suite_comp_thm_iso₂ H K)) ≋ ((↩(H*₁K))/*(K↘K_inclus_HK H K)),
+  have h₂ :  (↩ im (suite_comp_thm_iso₂ H K)) ≋ (((H⬝K))/*(K↘(H⬝K))),
     rw sont_isomorphes_symm,
     exact im_surj_isomorphe_arrivee (suite_comp_thm_iso₂ H K) (im_suite_comp_thm_iso₂ H K),
-  have h₁ : (H/*((↩(K:set G)∩H)↘(KiH_inclus_H H K))) ≋ (↩ im (suite_comp_thm_iso₂ H K)),
+  have h₁ : H /* (K∩H)↘H ≋ ↩im (suite_comp_thm_iso₂ H K),
     simp only [ker_suite_comp_thm_iso₂ H K], 
     exact theoreme_isomorphisme₁ (suite_comp_thm_iso₂ H K),
   exact sont_isomorphes_trans h₁ h₂,
