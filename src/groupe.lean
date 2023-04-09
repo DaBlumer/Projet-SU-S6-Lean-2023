@@ -2134,6 +2134,141 @@ begin
 end
 
 
+-- Définitions en rapport avec le théorème d'isomorphisme 2 : 
+-- Pour H < G et K ⊲ G, on définit HK < G et on montre que K∩H ⊲ G
+def ss_groupe_mul_ss_groupe {G : groupe} (H K : sous_groupe G)
+  : set G :=  {x | ∃ (h∈H) (k∈K), x = h*k}
+local notation H `*₁`:51 K := ss_groupe_mul_ss_groupe H K
+
+@[instance] lemma ss_mul_distingue_est_sous_groupe {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : est_sous_groupe (H*₁K) :=
+begin
+  have p₁ : (H*₁K) = im_recip (mor_quotient K) (ens_image (mor_quotient K) H),
+    rw ←set_eq, intro, split; intro p, 
+      { -- HK ⊆ cl⁻¹(cl(H)) 
+        cases p with h tmp, cases tmp with h_H tmp,
+        cases tmp with k tmp, cases tmp with k_K phk,   
+        rw [←in_ens_image, mor_quotient_id],
+        have p' := app_eq (@quot.mk G (G%.K)) phk,
+        rw [p', coe_sous_groupe₂ k k_K, class_xh_is_x], 
+        existsi [(h:G), h_H], 
+        rw mor_quotient_id,
+      }, { -- cl⁻¹(cl(H)) ⊆ HK 
+        rw [←in_ens_image] at p,
+        cases p with h tmp, cases tmp with h_H ph, 
+        rw [mor_quotient_id, mor_quotient_id] at ph,
+        have p₂ := quot_gauche_exact _ _ ph,
+        cases p₂ with k tmp, cases tmp with k_K p,
+        existsi [h, h_H, k, k_K], 
+        exact p,
+      },
+  have p₂ := preim_ss_groupe_est_ss_groupe (mor_quotient K) (↩(ens_image (mor_quotient K) H)),
+  rw sous_groupe_de_est_sous_groupe_id at p₂,
+  rw ←p₁ at p₂,
+  exact p₂,
+end
+
+lemma H_inclus_HK {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : (H:set G)⊆(↩H*₁K) :=
+begin
+  intros h h_H, rw sous_groupe_de_est_sous_groupe_id,
+  existsi [h, h_H, (1:G), K.contient_neutre], rw neutre_droite,
+end
+
+lemma K_inclus_HK {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : (K:set G)⊆(↩(H*₁K)) :=
+begin
+  intros k k_K, rw sous_groupe_de_est_sous_groupe_id,
+  existsi [(1:G), H.contient_neutre, k, k_K], rw neutre_gauche',
+end
+
+lemma KiH_inclus_HK {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : ((K:set G)∩H) ⊆ (↩(H*₁K)) := λ a pa, K_inclus_HK _ _ _ pa.1
+
+lemma KiH_inclus_H {G : groupe} (H K : sous_groupe G)
+  [est_distingue K] : ((K:set G)∩H) ⊆ H := λ _ pg, pg.2
+
+-- Le morphisme naturel de H vers HK
+def injection_H_HK {G : groupe} (H K : sous_groupe G) [est_distingue K] : morphisme H (↩H*₁K) :=
+{
+  mor := λ h, ⟨h.val, H_inclus_HK _ _ _ h.property⟩,
+  resp_mul := begin
+    intros, 
+    apply subtype.eq,
+    rw [@coe_mul_sous_groupe _ (↩H*₁K), coe_mul_sous_groupe],
+  end
+}
+
+-- La suite p : H → HK → HK/K de la preuve du polycopié
+def suite_comp_thm_iso₂ {G : groupe} (H K : sous_groupe G) [dK : est_distingue K]
+  : morphisme H ((↩H*₁K)/*(K↘(K_inclus_HK _ _))) 
+  := (mor_quotient (K↘(K_inclus_HK _ _))) ∘₁ (injection_H_HK _ _)
+
+lemma ker_suite_comp_thm_iso₂ {G : groupe} (H K : sous_groupe G) [dK : est_distingue K]
+  : ((↩(K:set G)∩H)↘(KiH_inclus_H H K)) = ↩(ker (suite_comp_thm_iso₂ H K)) :=
+begin
+  rw [sous_groupe_eq_iff, sous_groupe_down_ens, sous_groupe_de_est_sous_groupe_id],
+  rw ←set_eq, intro h, split;intro p;
+  rw ←im_one_in_ker at *;
+  unfold suite_comp_thm_iso₂ at *; 
+  rw [comp_mor_fun_eq, function.comp_app, mor_quotient_id, class_one_iff] at *,
+    exact p.1,-- K∩H ⊆ ker p (Ex compli)
+    exact ⟨p, h.property⟩, --ker p ⊆ K∩H
+end
+
+lemma im_suite_comp_thm_iso₂ {G : groupe} (H K : sous_groupe G) [dK : est_distingue K]
+  : function.surjective (suite_comp_thm_iso₂ H K) :=
+begin
+  intro, cases (repr_quot b) with b_v p₁, cases b_v with b_v p₂,
+  cases p₂ with h t, cases t with h_H t, cases t with k t, cases t with k_K phk, 
+  existsi (⟨h,h_H⟩:H), 
+  unfold suite_comp_thm_iso₂,  
+  rw [comp_mor_fun_eq, function.comp_app, mor_quotient_id,←p₁],
+  apply quot.sound,
+  existsi (⟨⟨k, K_inclus_HK _ _ _ k_K⟩, k_K⟩:(K↘K_inclus_HK _ _)).val,
+  existsi k_K,
+  apply subtype.eq,
+  exact phk,
+end
+
+@[instance] lemma K_inter_H_distingue_H {G : groupe} (H K : sous_groupe G)
+  [dK : est_distingue K] : est_distingue ((↩(K:set G)∩H)↘(KiH_inclus_H H K)) :=
+begin
+  have ker_p_distingue := ker_est_distingue (suite_comp_thm_iso₂ H K),
+  rw ←ker_suite_comp_thm_iso₂ at ker_p_distingue, 
+  exact ker_p_distingue,
+end
+
+lemma univ_isomorphe_groupe (G : groupe) : G ≋ (↩(@set.univ G)) :=
+begin
+  existsi (⟨λ g, ⟨g, true.intro⟩, 
+           by{intros, apply subtype.eq, rw [coe_mul_sous_groupe]}⟩ 
+           : morphisme G (↩(@set.univ G))),
+  rw carac_est_isomorphisme, split,
+  intros a a' aa, have aa' := app_eq (λ x:↩(@set.univ G), x.val) aa, exact aa', 
+  intro b, existsi b.val, apply subtype.eq, refl,
+end
+
+lemma im_surj_isomorphe_arrivee {G G' : groupe} (f : morphisme G G') (fS : function.surjective f)
+  : G' ≋ (↩im f) :=
+begin
+  have h₀ := (carac_mor_surj _).1 fS, simp [h₀],
+  exact univ_isomorphe_groupe _, 
+end
+
+theorem theoreme_isomorphisme₂ {G : groupe} (H K : sous_groupe G) [dK : est_distingue K]
+  : (H/*((↩(K:set G)∩H)↘(KiH_inclus_H H K))) ≋ ((↩(H*₁K))/*(K↘K_inclus_HK H K)) :=
+begin
+  have h₂ :  (↩ im (suite_comp_thm_iso₂ H K)) ≋ ((↩(H*₁K))/*(K↘K_inclus_HK H K)),
+    rw sont_isomorphes_symm,
+    exact im_surj_isomorphe_arrivee (suite_comp_thm_iso₂ H K) (im_suite_comp_thm_iso₂ H K),
+  have h₁ : (H/*((↩(K:set G)∩H)↘(KiH_inclus_H H K))) ≋ (↩ im (suite_comp_thm_iso₂ H K)),
+    simp only [ker_suite_comp_thm_iso₂ H K], 
+    exact theoreme_isomorphisme₁ (suite_comp_thm_iso₂ H K),
+  exact sont_isomorphes_trans h₁ h₂,
+end
+
+
 end groupe
 
 
