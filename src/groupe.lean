@@ -2106,10 +2106,10 @@ begin
 end
 
 
-theorem iso_de_theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
+theorem theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
   : (G/*↩ker f) ≋ ↩im f :=
 begin
-  have p₁ := theoreme_isomorphisme₁ f, 
+  have p₁ := pre_theoreme_isomorphisme₁ f, 
   cases p₁ with f' tmp, cases tmp with p₁, 
   existsi f', 
   rw carac_est_isomorphisme,
@@ -2118,7 +2118,7 @@ begin
     rw [carac_mor_inj, ←set_eq], simp only [in_singleton, ←im_one_in_ker],
     apply quot.ind, intro, 
     split;intro p, 
-      have p₂ := app_eq plongeon p,
+      have p₂ := app_eq (plongeon _) p,
       rw [←mor_quotient_id, ←p₁ a, plongeon_id, coe_sous_groupe, coe_one_sous_groupe] at p₂,
       rw im_one_in_ker at p₂,
       rw class_one_iff,
