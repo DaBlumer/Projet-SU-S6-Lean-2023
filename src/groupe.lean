@@ -135,6 +135,8 @@ lemma coe_mul_sous_groupe {G : groupe} {H : sous_groupe G} (a b : (H : groupe))
   : (a*b).val = a.val*b.val := rfl
 lemma coe_sous_groupe {G : groupe} {H : sous_groupe G} (a : H) 
   :  (a : G) =  a.val := rfl
+lemma coe_sous_groupe₂ {G : groupe} {H : sous_groupe G} (a : G) (a_H : a∈H)
+  : a = ((⟨a, a_H⟩:H) : G) := rfl
 lemma coe_one_sous_groupe {G : groupe} {H : sous_groupe G}
   : (1 : (H:groupe)).val = (1 : G) := rfl
 
@@ -146,15 +148,15 @@ def sous_groupe_to_sous_sous_groupe {G : groupe} {H : sous_groupe G}
   inv_stab := λ a pa, K.inv_stab _ pa,
   contient_neutre := K.contient_neutre, 
 }
-local notation K `↓`:51 KinH := @sous_groupe_to_sous_sous_groupe _ _ K KinH 
-example (G : groupe) (H K : sous_groupe G) (KinH: (K:set G) ⊆ (H:set G)) := (K↓KinH)
+local notation K `↘`:53 KinH := @sous_groupe_to_sous_sous_groupe _ _ K KinH 
+example (G : groupe) (H K : sous_groupe G) (KinH: (K:set G) ⊆ (H:set G)) := (K↘KinH)
 
 lemma ss_gr_of_ss_ss_gr_sub {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
   : ((K : sous_groupe G) : set G) ⊆ (H : set G) := λ x px, px.1
 
 
 lemma sous_groupe_down_ens {G : groupe} {H K: sous_groupe G}  (KinH : (K:set G) ⊆ (H: set G))
-  : ((K↓KinH): set ((H : groupe) : Type*)) = {x | x.val ∈ K} := rfl
+  : ((K↘KinH): set ((H : groupe) : Type*)) = {x | x.val ∈ K} := rfl
 lemma sous_groupe_up_ens {G : groupe} {H : sous_groupe G} (K : sous_groupe H)
   : ((K : sous_groupe G) : set G) = {x | x∈H ∧ ∀p:x∈H, (⟨x,p⟩:H)∈K} := rfl
 lemma sous_groupe_eq_iff {G : groupe} {H H': sous_groupe G}
@@ -166,7 +168,7 @@ begin
 end 
 
 lemma sous_groupe_up_down {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
-  : ((K : sous_groupe G)↓(ss_gr_of_ss_ss_gr_sub K)) = K :=
+  : ((K : sous_groupe G)↘(ss_gr_of_ss_ss_gr_sub K)) = K :=
 begin
   rw [sous_groupe_eq_iff, ←set_eq], intro a,
   rw [sous_groupe_down_ens (ss_gr_of_ss_ss_gr_sub K)],
@@ -176,7 +178,7 @@ begin
 end
 
 lemma sous_groupe_down_up {G : groupe} {H K: sous_groupe G} (KinH: (K:set G) ⊆ (H:set G))
-  : ((K↓KinH) : sous_groupe G) = K :=
+  : ((K↘KinH) : sous_groupe G) = K :=
 begin
   rw [sous_groupe_eq_iff, ←set_eq], intro a,
   rw sous_groupe_up_ens,  
@@ -676,10 +678,24 @@ example (G : groupe) (A : set G) (h : A <₁ G) := morphisme (↩A) G
 @[simp] lemma sous_groupe_de_est_sous_groupe_id {G : groupe} (A : set G)
   [pA : est_sous_groupe A] : ((↩A) : set G) = A := rfl
 
+@[instance] lemma sous_groupe_est_sous_groupe (G : groupe) (H : sous_groupe G)
+  : est_sous_groupe (H:set G) := ⟨H.inv_stab, H.mul_stab, H.contient_neutre⟩
+
+
+
 @[instance] lemma triv_est_sous_groupe (G : groupe) : {1} <₁ G :=  
   by { split; intros; rw in_singleton at *; rw H, rw inv_neutre_eq_neutre, rw neutre_gauche', rw H_1 }
 @[instance] lemma groupe_est_sous_groupe (G : groupe) : set.univ <₁ G :=
   by {split; intros; exact in_univ _}
+@[instance] lemma ens_inter_ens_est_sous_groupe {G : groupe} (A B : set G)
+  [pA : est_sous_groupe A] [pB : est_sous_groupe B] : est_sous_groupe (A∩B) :=
+begin split; intros,
+  exact ⟨pA.inv_stab _ H.1, pB.inv_stab _ H.2⟩,
+  exact ⟨pA.mul_stab _ H.1 _ H_1.1, pB.mul_stab _ H.2 _ H_1.2⟩,
+  exact ⟨pA.contient_neutre, pB.contient_neutre⟩
+end
+@[instance] lemma ss_gr_inter_ss_gr_est_sous_groupe (G : groupe) (A B : sous_groupe G)
+  : est_sous_groupe ((A:set G)∩B) := ens_inter_ens_est_sous_groupe (A:set G) (B:set G) 
 
 
 lemma x_pow_in_sous_groupe {G: groupe} {x : G} {A : set G} {h : est_sous_groupe A}
@@ -887,6 +903,20 @@ begin
       exact h_eq,
     }
   }
+end
+
+
+@[instance] lemma distingue_down_est_distingue {G : groupe} {H K : sous_groupe G}
+  (HinK : (H:set G) ⊆ K) [dH : est_distingue H] : est_distingue (H↘HinK) :=
+begin
+  rw carac_est_distingue,
+  intros k hk g,
+  rw [mem_ss_groupe_simp, sous_groupe_down_ens] at ⊢ hk,
+  have goal : (g*k*g⁻¹).val∈H,
+    repeat{rw coe_mul_sous_groupe},
+    rw carac_est_distingue at dH,
+    exact dH k.val hk g.val,
+  exact goal,
 end
 
 lemma distingue_droite_to_gauche {G : groupe } {H' : sous_groupe G}
@@ -1200,7 +1230,7 @@ def groupe_quotient {G : groupe} (H : sous_groupe G) [dH : est_distingue H] : gr
 }
 
 
-local notation G ` /* `:35 H:34 := groupe_quotient H
+local notation G ` /* `:35 H:34 := @groupe_quotient G H _
 
 
 def mor_quotient {G : groupe} (H : sous_groupe G) [dH: est_distingue H] : morphisme G (G/*H) :=
@@ -1217,6 +1247,13 @@ lemma quot_of_mul_quot' {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
 
 lemma one_quot_is_class_one {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
   : (1: G/*H) = ⟦1⟧@H := rfl
+
+lemma class_xh_is_x {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
+  (a : G) (h : H) : (⟦a*h⟧@H) = (⟦a⟧@H) :=
+begin
+  apply quot.sound, apply rel_gauche_symm, 
+  existsi h.val, existsi h.property, refl, 
+end
 
 lemma repr_quot_one_in {G : groupe} (H : sous_groupe G) [dH: est_distingue H]
   : (repr_quot (1:G/*H)).val ∈ H :=
@@ -1622,8 +1659,33 @@ begin
   }
 end
 
+
 def sont_isomorphes (G G' : groupe) := ∃ f : morphisme G G', est_isomorphisme f
 local notation G `≋`:50 G' := sont_isomorphes G G'
+
+lemma sont_isomorphes_symm (G G' : groupe) : (G ≋ G') ↔ (G' ≋ G) :=
+begin
+  split; intro x;
+  cases x with f pf; cases pf with g pfg; 
+  existsi [g, f];
+  exact ⟨pfg.2, pfg.1⟩,
+end
+
+lemma sont_isomorphes_trans {G H K : groupe} : (G≋H) → (H≋K) → (G≋K) :=
+begin
+  intros gh hk,
+  cases gh with f₁ t, cases t with g₁ t, cases t with pf₁ pg₁,  
+  cases hk with f₂ t, cases t with g₂ t, cases t with pf₂ pg₂, 
+  existsi [(f₂ ∘₁ f₁), (g₁ ∘₁ g₂)],
+  split; intro p;
+  repeat{rw [comp_mor_fun_eq, function.comp_app]},
+    rw [pf₂, pf₁],
+    rw [pg₁, pg₂],
+end
+
+lemma comp_isomorphisme {G H K : groupe} (g : morphisme H K) (f : morphisme G H) 
+  (fI : est_isomorphisme f) (gI : est_isomorphisme g) : est_isomorphisme (g∘₁f) :=
+  by {rw carac_est_isomorphisme at *, rw comp_mor_fun_eq, exact function.bijective.comp gI fI,}
 
 def End (G : groupe) := morphisme G G
 def Aut (G : groupe) := {f : morphisme G G // est_isomorphisme f}
@@ -1772,6 +1834,19 @@ begin
     rw [im_one_in_ker, h] at eq,
     rw in_singleton at eq, 
     exact eq,
+  }
+end
+
+lemma carac_mor_surj {G H : groupe} (f: morphisme G H)
+  : function.surjective f ↔ im f = set.univ :=
+begin
+  split;intro p, {
+    rw ←set_eq, intro a, split; intro p₂, exact in_univ _,
+    cases (p a), existsi w, exact h, 
+  }, {
+    intro, have h₀ : b∈set.univ := in_univ _, rw ←p at h₀,
+    cases h₀ with a pa,
+    existsi a, exact pa,  
   }
 end
 
@@ -1997,11 +2072,11 @@ begin
   }
 end
 
-def plongeon {G : groupe} {H : sous_groupe G} : morphisme H G := ⟨λ h, h.val, coe_mul_sous_groupe⟩
-lemma plongeon_id {G : groupe} {H : sous_groupe G} (a : H) : plongeon a = (a : G):= rfl
+def plongeon {G : groupe} (H : sous_groupe G) : morphisme H G := ⟨λ h, h.val, coe_mul_sous_groupe⟩
+lemma plongeon_id {G : groupe} (H : sous_groupe G) (a : H) : plongeon H a = (a : G):= rfl
 
-theorem theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
-  : ∃! f' : morphisme (G/*(↩ker f)) ↩im f, f = plongeon ∘₁ f' ∘₁ (mor_quotient ↩(ker f)) :=
+theorem pre_theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
+  : ∃! f' : morphisme (G/*(↩ker f)) ↩im f, f = plongeon _ ∘₁ f' ∘₁ (mor_quotient ↩(ker f)) :=
 begin
   
   -- On prend la fonction dont l'existence est démontrée par le théorème de factorisation 
