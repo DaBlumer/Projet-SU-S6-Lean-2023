@@ -1260,7 +1260,7 @@ def groupe_quotient {G : groupe} (H : sous_groupe G) [dH : est_distingue H] : gr
 }
 
 
-local notation G ` /* `:55 H:55 := @groupe_quotient G H _
+local notation G ` /* `:61 H:61 := @groupe_quotient G H _
 
 instance ens_quot_to_groupe_quot {G : groupe } {H : sous_groupe G} [H ⊲ G] : has_coe (G/.H) (G/*H)
   := ⟨id⟩
@@ -1684,7 +1684,7 @@ end
 def sont_isomorphes (G G' : groupe) := ∃ f : morphisme G G', est_isomorphisme f
 local notation G `≋`:40 G' := sont_isomorphes G G'
 
-@[symm] lemma sont_isomorphes_symm (G G' : groupe) : (G ≋ G') ↔ (G' ≋ G) :=
+@[symm] lemma sont_isomorphes_symm {G G' : groupe} : (G ≋ G') ↔ (G' ≋ G) :=
 begin
   split; intro x;
   cases x with f pf; cases pf with g pfg; 
@@ -1945,6 +1945,24 @@ begin
   exact dA h' h'_A rg,
 end
 
+
+lemma univ_isomorphe_groupe (G : groupe) : G ≋ (↩(@set.univ G)) :=
+begin
+  existsi (⟨λ g, ⟨g, true.intro⟩, 
+           by{intros, apply subtype.eq, rw [coe_mul_sous_groupe]}⟩ 
+           : morphisme G (↩(@set.univ G))),
+  rw carac_est_isomorphisme, split,
+  intros a a' aa, have aa' := app_eq (λ x:↩(@set.univ G), x.val) aa, exact aa', 
+  intro b, existsi b.val, apply subtype.eq, refl,
+end
+
+lemma im_surj_isomorphe_arrivee {G G' : groupe} (f : morphisme G G') (fS : function.surjective f)
+  : G' ≋ (↩im f) :=
+begin
+  have h₀ := (carac_mor_surj _).1 fS, simp [h₀],
+  exact univ_isomorphe_groupe _, 
+end
+
 def centre (G : groupe) : set G := {g | ∀ h, g*h = h*g}
 
 @[instance] lemma centre_est_sous_groupe (G : groupe) : centre G <₁ G := 
@@ -2180,6 +2198,14 @@ begin
   exact sont_isomorphes_trans p₀ p₁,
 end
 
+lemma theoreme_isomorphisme₁_surj {G G' : groupe} {f : morphisme G G'} (fS : function.surjective f)
+  : G/*↩ker f ≋ G' :=
+begin
+  have p₀ :  G/*↩ker f ≋ ↩im f := theoreme_isomorphisme₁ _,
+  have p₁ : ↩im f ≋ G' := sont_isomorphes_symm.1 (im_surj_isomorphe_arrivee _ fS),
+  exact sont_isomorphes_trans p₀ p₁,
+end
+
 
 -- Définitions en rapport avec le théorème d'isomorphisme 2 : 
 -- Pour H < G et K ⊲ G, on définit HK < G et on montre que K∩H ⊲ G
@@ -2287,23 +2313,6 @@ begin
   have ker_p_distingue := ker_est_distingue (suite_comp_thm_iso₂ H K),
   rw ←ker_suite_comp_thm_iso₂ at ker_p_distingue, 
   exact ker_p_distingue,
-end
-
-lemma univ_isomorphe_groupe (G : groupe) : G ≋ (↩(@set.univ G)) :=
-begin
-  existsi (⟨λ g, ⟨g, true.intro⟩, 
-           by{intros, apply subtype.eq, rw [coe_mul_sous_groupe]}⟩ 
-           : morphisme G (↩(@set.univ G))),
-  rw carac_est_isomorphisme, split,
-  intros a a' aa, have aa' := app_eq (λ x:↩(@set.univ G), x.val) aa, exact aa', 
-  intro b, existsi b.val, apply subtype.eq, refl,
-end
-
-lemma im_surj_isomorphe_arrivee {G G' : groupe} (f : morphisme G G') (fS : function.surjective f)
-  : G' ≋ (↩im f) :=
-begin
-  have h₀ := (carac_mor_surj _).1 fS, simp [h₀],
-  exact univ_isomorphe_groupe _, 
 end
 
 theorem theoreme_isomorphisme₂ {G : groupe} (H K : sous_groupe G) [dK : est_distingue K]
