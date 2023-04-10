@@ -197,12 +197,15 @@ structure morphisme (G H : groupe) :=
   (mor : G → H)
   (resp_mul : ∀ a b : G, mor (a*b) = (mor a) * (mor b) )
 
+-- Notation pour le type des morphismes analogue à celle pour les fonctions:
+local notation G `→*`:51 H:51 := morphisme G H
+
 -- Permet de voir un morphisme comme l'application sous-jacente quand c'est nécessaire
 instance morphisme_to_fonction {G H : groupe}
-  : has_coe_to_fun (morphisme G H) (λ _, G → H) :=
+  : has_coe_to_fun (G  →* H) (λ _, G → H) :=
   ⟨λ m, m.mor⟩
 
-def comp_mor {G H K: groupe} (g : morphisme H K) (f : morphisme G H) : morphisme G K := 
+def comp_mor {G H K: groupe} (g : H  →* K) (f : G  →* H) : G  →* K := 
   {
     mor := g.mor∘f.mor,
     resp_mul := λ g₁ g₂, by {simp, rw [f.resp_mul, g.resp_mul]} 
@@ -210,7 +213,7 @@ def comp_mor {G H K: groupe} (g : morphisme H K) (f : morphisme G H) : morphisme
 
 local notation g `∘₁`:51 f := comp_mor g f
 
-lemma morphisme_eq_iff {G H : groupe} (f f' : morphisme G H)
+lemma morphisme_eq_iff {G H : groupe} (f f' : G  →* H)
   : f = f' ↔ (f : G→H) = (f' : G→H) :=
 begin
   split; intro p,
@@ -220,7 +223,7 @@ begin
     simp [p],
 end
 
-lemma morphisme_eq_iff₂ {G H : groupe} (f f' : morphisme G H)
+lemma morphisme_eq_iff₂ {G H : groupe} (f f' : G  →* H)
   : f = f' ↔ ∀ g, f g = f' g :=
 begin
   split; intro p,
@@ -228,9 +231,9 @@ begin
     rw morphisme_eq_iff, funext, exact p x,
 end
 
-lemma comp_mor_id {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
+lemma comp_mor_id {G H K: groupe} (g : H  →* K) (f : G  →* H)
   : ∀ x, (g∘₁f) x = g.mor (f.mor x) := λ x, rfl
-lemma mor_id {G H : groupe} (f : morphisme G H)
+lemma mor_id {G H : groupe} (f : G  →* H)
   : ∀ x, f x = f.mor x := λ x, rfl
 
 section -- exemples d'utilisation transparente des coercions
@@ -240,7 +243,7 @@ variables (G G' G'': groupe) (H : sous_groupe G)
 -- ici G est vu comme G.ens, G' comme G'.ens et H comme {a : G.ens // a∈H.sous_ens}
 variables (g₁ g₂ : G) (g₁' g₂' : G') (h₁ h₂ : H) 
 
-variables (f : morphisme G G') (g : morphisme G' G'') (h : morphisme G' H)
+variables (f : G  →* G') (g : morphisme G' G'') (h : morphisme G' H)
 
 example : G' := f g₁ -- ici f est vu comme f.mor
 
@@ -424,20 +427,20 @@ lemma neutre_unique_fort (G : groupe) (e a : G) (h : e*a = a) : e = 1 :=
 
 
 
-lemma mor_resp_mul {G H : groupe} {f : morphisme G H}
+lemma mor_resp_mul {G H : groupe} {f : G  →* H}
   : ∀ a b : G, f (a * b) = f a * f b := λ a b, f.resp_mul a b 
 
-lemma mor_fun_eq {G H : groupe} (f : morphisme G H) : (f : G→H) = f.mor := rfl
-lemma comp_mor_fun_eq {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
+lemma mor_fun_eq {G H : groupe} (f : G  →* H) : (f : G→H) = f.mor := rfl
+lemma comp_mor_fun_eq {G H K: groupe} (g : H  →* K) (f : G  →* H)
   : (g∘₁f : G→K) = ((g:H→K) ∘ (f:G→H)) := rfl 
 
-lemma mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
+lemma mor_neutre_est_neutre {G H : groupe} {f : G  →* H} : f 1 = 1 :=
 begin
   apply H.neutre_unique_fort (f 1) (f 1),
   rw [← mor_resp_mul, G.neutre_droite],
 end
 
-theorem mor_inv_inv_mor {G H : groupe} {f : morphisme G H}  (a : G) : f a⁻¹ =  (f a)⁻¹ :=
+theorem mor_inv_inv_mor {G H : groupe} {f : G  →* H}  (a : G) : f a⁻¹ =  (f a)⁻¹ :=
   begin
   apply inv_unique,
   rw ← mor_resp_mul a⁻¹ a,
@@ -1653,10 +1656,10 @@ end
 
 
 
-def est_isomorphisme {G H : groupe} (f : morphisme G H) : Prop :=
-  ∃ (g : morphisme H G), function.left_inverse g f ∧ function.right_inverse g f
+def est_isomorphisme {G H : groupe} (f : G  →* H) : Prop :=
+  ∃ (g : H  →* G), function.left_inverse g f ∧ function.right_inverse g f
 
-lemma carac_est_isomorphisme {G H : groupe} (f : morphisme G H)
+lemma carac_est_isomorphisme {G H : groupe} (f : G  →* H)
   : est_isomorphisme f ↔ function.bijective f :=
 begin 
   split,
@@ -1675,13 +1678,13 @@ begin
       have h₁ := f_bij_inv.inv_droite,
         have h₂ : f_bij_inv.f = f, refl, rw h₂ at h₁,
       repeat {rw h₁},
-      apply Exists.intro (⟨g, inv_resp_mul⟩ : morphisme H G),
+      apply Exists.intro (⟨g, inv_resp_mul⟩ : H  →* G),
       exact ⟨f_bij_inv.inv_gauche, f_bij_inv.inv_droite⟩, 
   }
 end
 
 
-def sont_isomorphes (G G' : groupe) := ∃ f : morphisme G G', est_isomorphisme f
+def sont_isomorphes (G G' : groupe) := ∃ f : G  →* G', est_isomorphisme f
 local notation G `≋`:40 G' := sont_isomorphes G G'
 
 @[symm] lemma sont_isomorphes_symm {G G' : groupe} : (G ≋ G') ↔ (G' ≋ G) :=
@@ -1704,15 +1707,15 @@ begin
     rw [pg₁, pg₂],
 end
 
-lemma comp_isomorphisme {G H K : groupe} (g : morphisme H K) (f : morphisme G H) 
+lemma comp_isomorphisme {G H K : groupe} (g : H  →* K) (f : G  →* H) 
   (fI : est_isomorphisme f) (gI : est_isomorphisme g) : est_isomorphisme (g∘₁f) :=
   by {rw carac_est_isomorphisme at *, rw comp_mor_fun_eq, exact function.bijective.comp gI fI,}
 
-def End (G : groupe) := morphisme G G
-def Aut (G : groupe) := {f : morphisme G G // est_isomorphisme f}
+def End (G : groupe) := G  →* G
+def Aut (G : groupe) := {f : G  →* G // est_isomorphisme f}
 
 def aut_int_fun {G : groupe} (g : G) (h : G) : G := g*h*g⁻¹
-def aut_int {G: groupe} (g : G) : morphisme G G :=
+def aut_int {G: groupe} (g : G) : G  →* G :=
   { mor:= aut_int_fun g,
     resp_mul := 
     begin
@@ -1745,39 +1748,39 @@ end
 def Int (G: groupe) := {f // ∃ g:G , f = aut_int g } 
 
 
-def im_recip {G H : groupe} (f : morphisme G H) (B: set H) :=
+def im_recip {G H : groupe} (f : G  →* H) (B: set H) :=
   im_recip (f : G→H) B
 
-def ens_image {G H : groupe} (f : morphisme G H) (A: set G) :=
+def ens_image {G H : groupe} (f : G  →* H) (A: set G) :=
   im_dir (f : G→H) A
 
-def ker {G H : groupe} (f : morphisme G H) : set G :=
+def ker {G H : groupe} (f : G  →* H) : set G :=
   {a : G.ens | f a = 1}
 
-def im {G H : groupe} (f : morphisme G H) : set H :=
+def im {G H : groupe} (f : G  →* H) : set H :=
   {b : H | ∃ a : G, f a = b }
 
 -- ↓ Utile pour pruver qu'un élément appartient à l'image
-lemma im_point_in_im {G H : groupe} (f : morphisme G H) (x : G)
+lemma im_point_in_im {G H : groupe} (f : G  →* H) (x : G)
   : f x ∈ im f := by {apply Exists.intro x, refl}
-lemma im_point_in_im_ss_ens {G H : groupe} (f : morphisme G H) (A : set G) (x ∈ A)
+lemma im_point_in_im_ss_ens {G H : groupe} (f : G  →* H) (A : set G) (x ∈ A)
   : f x ∈ (ens_image f A) := by {existsi x, existsi H, refl,}
 -- ↓ Utile pour prouver qu'un élément appartient au noyeau
-lemma im_one_in_ker {G H : groupe} (f : morphisme G H) (x : G)
+lemma im_one_in_ker {G H : groupe} (f : G  →* H) (x : G)
   : (f x = 1) ↔ (x ∈ ker f) := iff.intro id id
-lemma in_ens_image {G H : groupe} (f : morphisme G H) (B : set H) (x : G)
+lemma in_ens_image {G H : groupe} (f : G  →* H) (B : set H) (x : G)
   : (f x ∈ B) = (x ∈ im_recip f B) := rfl 
 
-lemma ker_est_preim_neutre {G H : groupe} (f : morphisme G H)
+lemma ker_est_preim_neutre {G H : groupe} (f : G  →* H)
   : ker f = im_recip f {1} := 
   by {rw ←set_eq, intro, split; intro p; rw [←im_one_in_ker, ←in_singleton (1:H), in_ens_image] at *; exact p,}
-lemma im_est_im_univ {G H : groupe} (f : morphisme G H)
+lemma im_est_im_univ {G H : groupe} (f : G  →* H)
   : im f = ens_image f set.univ :=
   by {rw ←set_eq, intro, unfold ens_image, unfold im_dir, unfold im, 
       split; intro p; cases p with a₁ ha; existsi a₁, existsi (in_univ a₁), exact ha,
       cases ha with _ p, exact p,}
 
-@[instance] lemma ker_est_sous_groupe {G H : groupe} (f : morphisme G H)
+@[instance] lemma ker_est_sous_groupe {G H : groupe} (f : G  →* H)
   : est_sous_groupe (ker f) :=
 begin 
   split,
@@ -1795,7 +1798,7 @@ begin
   exact mor_neutre_est_neutre,
 end
 
-@[instance] lemma im_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (G' : sous_groupe G)
+@[instance] lemma im_ss_groupe_est_ss_groupe {G H : groupe} (f : G  →* H) (G' : sous_groupe G)
   : est_sous_groupe (ens_image f G') := 
 begin
   split, {
@@ -1815,14 +1818,14 @@ begin
   }
 end
 
-@[instance] lemma im_est_ss_groupe {G H : groupe} (f : morphisme G H) 
+@[instance] lemma im_est_ss_groupe {G H : groupe} (f : G  →* H) 
   : est_sous_groupe (im f) :=
 begin
   rw im_est_im_univ, 
   apply im_ss_groupe_est_ss_groupe f (↩set.univ),
 end
 
-@[instance] lemma preim_ss_groupe_est_ss_groupe {G H : groupe} (f : morphisme G H) (H' : sous_groupe H)
+@[instance] lemma preim_ss_groupe_est_ss_groupe {G H : groupe} (f : G  →* H) (H' : sous_groupe H)
   : est_sous_groupe (im_recip f H') :=
 begin
   split, {
@@ -1838,7 +1841,7 @@ begin
   }
 end
 
-lemma carac_mor_inj {G H : groupe} (f : morphisme G H) 
+lemma carac_mor_inj {G H : groupe} (f : G  →* H) 
   : function.injective f ↔ ker f = {(1:G)} :=
 begin
   split, {
@@ -1858,7 +1861,7 @@ begin
   }
 end
 
-lemma carac_mor_surj {G H : groupe} (f: morphisme G H)
+lemma carac_mor_surj {G H : groupe} (f: G  →* H)
   : function.surjective f ↔ im f = set.univ :=
 begin
   split;intro p, {
@@ -1871,11 +1874,11 @@ begin
   }
 end
 
-theorem ker_comp_eq_inv_ker {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
+theorem ker_comp_eq_inv_ker {G H K: groupe} (g : H  →* K) (f : G  →* H)
   : ker (g ∘₁ f) = im_recip f (ker g) := by {refl} 
 -- ↑ Par définition, x ∈ ker (g ∘ f) est égal à x ∈ f⁻¹ (ker g). Lean sait faire seul c: 
 
-theorem im_comp_eq_im_im {G H K: groupe} (f : morphisme G H) (g : morphisme H K) 
+theorem im_comp_eq_im_im {G H K: groupe} (f : G  →* H) (g : H  →* K) 
   : im (g ∘₁ f) = ens_image g (im f) :=
 begin
   rw ←set_eq, intro a, split; intro h,
@@ -1893,7 +1896,7 @@ begin
     }
 end
 
-@[instance] lemma preim_distingue_est_distingue {G H : groupe} (f : morphisme G H) {K : sous_groupe H}
+@[instance] lemma preim_distingue_est_distingue {G H : groupe} (f : G  →* H) {K : sous_groupe H}
   (dK : K ⊲ H) : (↩(im_recip f K)) ⊲ G :=
 begin
   rw carac_est_distingue at dK ⊢, 
@@ -1904,13 +1907,13 @@ begin
 end
 
 
-@[instance] lemma ker_est_distingue {G H : groupe} (f : morphisme G H) : ((↩(ker f)) ⊲ G) :=
+@[instance] lemma ker_est_distingue {G H : groupe} (f : G  →* H) : ((↩(ker f)) ⊲ G) :=
 begin
   simp only [ker_est_preim_neutre f],
   apply preim_distingue_est_distingue f (triv_est_distingue H), 
 end
 
-def mor_vu_dans_im {G H : groupe} (f : morphisme G H) : morphisme G ↩(im f) :=
+def mor_vu_dans_im {G H : groupe} (f : G  →* H) : morphisme G ↩(im f) :=
 {
   mor := λ g, ⟨f g, im_point_in_im f g⟩,
   resp_mul := λ g g',
@@ -1925,11 +1928,11 @@ def mor_vu_dans_im {G H : groupe} (f : morphisme G H) : morphisme G ↩(im f) :=
 
 local notation f`↓`:51 := mor_vu_dans_im f
 
-lemma mor_vu_dans_im_id {G H : groupe} (f : morphisme G H) (a : G) 
+lemma mor_vu_dans_im_id {G H : groupe} (f : G  →* H) (a : G) 
   : ((f↓) a).val = f a := rfl
 
 
-@[instance] lemma im_distingue_est_distingue_dans_im {G H : groupe} (f : morphisme G H)
+@[instance] lemma im_distingue_est_distingue_dans_im {G H : groupe} (f : G  →* H)
   {A : sous_groupe G} (dA : A ⊲ G) : (↩(ens_image (f↓) A)) ⊲ (↩(im f)) := 
 begin
   rw carac_est_distingue at dA ⊢,
@@ -1956,7 +1959,7 @@ begin
   intro b, existsi b.val, apply subtype.eq, refl,
 end
 
-lemma im_surj_isomorphe_arrivee {G G' : groupe} (f : morphisme G G') (fS : function.surjective f)
+lemma im_surj_isomorphe_arrivee {G G' : groupe} (f : G  →* G') (fS : function.surjective f)
   : G' ≋ (↩im f) :=
 begin
   have h₀ := (carac_mor_surj _).1 fS, simp [h₀],
@@ -2078,7 +2081,7 @@ lemma card_ss_groupe_div_card_groupe {G : groupe} (H : sous_groupe G) [fG : est_
 
 
 
-lemma mor_quot_ker_inj {G G' : groupe} {f : morphisme G G'} (fI : function.injective f)
+lemma mor_quot_ker_inj {G G' : groupe} {f : G  →* G'} (fI : function.injective f)
   : est_isomorphisme  (mor_quotient (↩ker f)) :=
 begin
   rw carac_mor_inj at fI,
@@ -2093,10 +2096,10 @@ begin
   }
 end
 
-lemma iso_quot_ker_inj {G G' : groupe} {f : morphisme G G'} (fI : function.injective f)
+lemma iso_quot_ker_inj {G G' : groupe} {f : G  →* G'} (fI : function.injective f)
   : G ≋ G/*↩ker f := by{existsi (mor_quotient _), exact mor_quot_ker_inj fI,}
 
-theorem theoreme_de_factorisation {G G': groupe} (f : morphisme G G') (H : sous_groupe G)
+theorem theoreme_de_factorisation {G G': groupe} (f : G  →* G') (H : sous_groupe G)
   [dH : est_distingue H] (H_ker : ∀ x : H, f x = 1): ∃! f' : morphisme (G/*H) G', f = f' ∘₁ (mor_quotient H) :=
 begin
   have f_resp_rel_gauche : ∀ a b : G, rel_gauche_mod H a b → f a = f b,
@@ -2129,10 +2132,10 @@ begin
   }
 end
 
-def plongeon {G : groupe} (H : sous_groupe G) : morphisme H G := ⟨λ h, h.val, coe_mul_sous_groupe⟩
+def plongeon {G : groupe} (H : sous_groupe G) : H  →* G := ⟨λ h, h.val, coe_mul_sous_groupe⟩
 lemma plongeon_id {G : groupe} (H : sous_groupe G) (a : H) : plongeon H a = (a : G):= rfl
 
-theorem pre_theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
+theorem pre_theoreme_isomorphisme₁ {G G' : groupe} (f : G  →* G')
   : ∃! f' : morphisme (G/*(↩ker f)) ↩im f, f = plongeon _ ∘₁ f' ∘₁ (mor_quotient ↩(ker f)) :=
 begin
   
@@ -2163,7 +2166,7 @@ begin
 end
 
 
-theorem theoreme_isomorphisme₁ {G G' : groupe} (f : morphisme G G')
+theorem theoreme_isomorphisme₁ {G G' : groupe} (f : G  →* G')
   : (G/*↩ker f) ≋ ↩im f :=
 begin
   have p₁ := pre_theoreme_isomorphisme₁ f, 
@@ -2190,7 +2193,7 @@ begin
   }
 end
 
-lemma theoreme_isomorphisme₁_inj {G G' : groupe} {f : morphisme G G'} (fI : function.injective f)
+lemma theoreme_isomorphisme₁_inj {G G' : groupe} {f : G  →* G'} (fI : function.injective f)
   : G ≋ ↩im f :=
 begin
   have p₀ : G ≋ G/*↩ker f := iso_quot_ker_inj fI, 
@@ -2198,7 +2201,7 @@ begin
   exact sont_isomorphes_trans p₀ p₁,
 end
 
-lemma theoreme_isomorphisme₁_surj {G G' : groupe} {f : morphisme G G'} (fS : function.surjective f)
+lemma theoreme_isomorphisme₁_surj {G G' : groupe} {f : G  →* G'} (fS : function.surjective f)
   : G/*↩ker f ≋ G' :=
 begin
   have p₀ :  G/*↩ker f ≋ ↩im f := theoreme_isomorphisme₁ _,
@@ -2337,7 +2340,7 @@ end
 --    objets complétement distincts, et il faut alors indiquer à lean que H/K est considéré comme
 --    un sous groupe de G/K avec l'injection naturelle : λ ⟦h:H⟧@K, ⟦h:G⟧@K
 class injection_naturelle (G G': groupe) :=
-  (mor : morphisme G G')
+  (mor : G  →* G')
   (mor_inj : function.injective mor)
 
 -- Si G' injecte G par une injection i, le sous groupe représentant G' dans G est i
