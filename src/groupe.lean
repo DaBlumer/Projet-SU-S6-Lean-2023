@@ -2438,6 +2438,37 @@ end
 
 
 
+theorem theoreme_isomorphisme₃ {G : groupe} (H K : sous_groupe G) [dH : H⊲G] [dK : K⊲G] [KinH : K ⊆₁ H] 
+  : G/*H ≋ (G/*K) /* (H/*(K↘H) ↪ (G/*K)) :=
+begin
+  -- Preuve du polycopié : 
+    -- On définit la composée naturelle f : G → G/K → (G/K)/(H/K)
+    -- Elle est surjective comme composée des fonctions de classe qui sont surjectives
+    -- On montre que son noyeau est égal à H
+    -- On applique le premier théorème d'isomorphisme à f 
+  let f := (mor_quotient (H/*(K↘H) ↪ (G/*K))) ∘₁ (mor_quotient K), 
+  have f_surj : function.surjective f := function.surjective.comp mor_quotient_surj mor_quotient_surj,
+  have ker_f_eq_H : ↩ker f = H,
+    rw [sous_groupe_eq_iff, sous_groupe_de_est_sous_groupe_id, ←set_eq],
+    intro a, have p₂ : f a = ⟦⟦a⟧@K⟧@((H/*(K↘H) ↪ G/*K)) := rfl,
+    rw [←im_one_in_ker,p₂, class_one_iff],
+    have p₃ : (H/*(K↘H) ↪ (G/*K)) = ↩im plongeon_HdK_GdK := rfl,
+    split;intro pa; rw p₃ at *, {
+      cases pa with A pA,
+      rw [plongeon_HdK_GdK_id] at pA,
+      have pA' := quot_gauche_exact _ _ pA,
+      cases pA' with k t, cases t with k_K pk,
+      rw pk,
+      exact H.mul_stab _ (repr_quot A).val.property _ (KinH.h _ k_K),
+    }, {
+      existsi ⟦⟨a, pa⟩⟧@(K↘H),
+      rw plongeon_HdK_GdK_id₂, 
+    },
+  have p₀ : G/*↩ker f ≋ (G/*K) /* (H/*(K↘H) ↪ (G/*K)) := theoreme_isomorphisme₁_surj f_surj, 
+  simp only [ker_f_eq_H] at p₀,
+  exact p₀,
+end
+
 end groupe
 
 
