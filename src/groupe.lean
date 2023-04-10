@@ -421,6 +421,31 @@ lemma neutre_unique_fort (G : groupe) (e a : G) (h : e*a = a) : e = 1 :=
   by {rw [mul_droite_div_droite, inv_droite] at h, exact h}
 
 
+
+
+
+lemma mor_resp_mul {G H : groupe} {f : morphisme G H}
+  : ∀ a b : G, f (a * b) = f a * f b := λ a b, f.resp_mul a b 
+
+lemma mor_fun_eq {G H : groupe} (f : morphisme G H) : (f : G→H) = f.mor := rfl
+lemma comp_mor_fun_eq {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
+  : (g∘₁f : G→K) = ((g:H→K) ∘ (f:G→H)) := rfl 
+
+lemma mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
+begin
+  apply H.neutre_unique_fort (f 1) (f 1),
+  rw [← mor_resp_mul, G.neutre_droite],
+end
+
+theorem mor_inv_inv_mor {G H : groupe} {f : morphisme G H}  (a : G) : f a⁻¹ =  (f a)⁻¹ :=
+  begin
+  apply inv_unique,
+  rw ← mor_resp_mul a⁻¹ a,
+  rw inv_gauche',
+  rw mor_neutre_est_neutre,
+  end
+
+
 def puissance_n {G : groupe} (x : G) : ℕ → G
   | nat.zero := 1
   | (nat.succ n) :=  x*(puissance_n n)
@@ -1058,7 +1083,7 @@ instance g_has_quotient_gauche {G: groupe}  : has_quotient_gauche G (sous_groupe
 instance g_has_quotient_droite {G: groupe} : has_quotient_droite G (sous_groupe G)
   := ⟨λ H, quotient_droite H⟩
  
-local notation `⟦`:max a`⟧@`:max H := quot.mk (rel_gauche_mod H) a 
+local notation `⟦`:max a`⟧@`:max H:max := quot.mk (rel_gauche_mod H) a 
 
 def classes_equiv_gauche {G : groupe} (H : sous_groupe G) :=
   {X // ∃ a : G, X = mul_gauche_ens a H}
@@ -1237,6 +1262,8 @@ def groupe_quotient {G : groupe} (H : sous_groupe G) [dH : est_distingue H] : gr
 
 local notation G ` /* `:55 H:55 := @groupe_quotient G H _
 
+instance ens_quot_to_groupe_quot {G : groupe } {H : sous_groupe G} [H ⊲ G] : has_coe (G/.H) (G/*H)
+  := ⟨id⟩
 
 def mor_quotient {G : groupe} (H : sous_groupe G) [dH: est_distingue H] : morphisme G (G/*H) :=
 {
@@ -1248,8 +1275,10 @@ lemma mor_quotient_id {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
   : ∀ a : G, mor_quotient H a = ⟦a⟧@H := λ a, rfl
 
 lemma quot_of_mul_quot' {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
-  : ∀ a b : G, (G/*H).mul (⟦a⟧@H) (⟦b⟧@H) = (⟦a*b⟧@H) := @quot_of_mul_quot G H dH
-
+  : ∀ a b : G, ( (⟦a⟧@H * ⟦b⟧@H) : G/*H ) = (⟦a*b⟧@H) := @quot_of_mul_quot G H dH
+lemma quot_of_inv_quot' {G : groupe} {H : sous_groupe G} [dH : est_distingue H]
+  : ∀ a : G, ((⟦a⟧@H)⁻¹ : G/*H) = ⟦a⁻¹⟧@H :=
+  by{intro, rw [←mor_quotient_id, ← mor_quotient_id, mor_inv_inv_mor]}
 lemma one_quot_is_class_one {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
   : (1: G/*H) = ⟦1⟧@H := rfl
 
@@ -1283,6 +1312,14 @@ begin
   apply quot.sound, existsi a⁻¹, existsi H.inv_stab _ p, rw inv_droite, 
 end
 section
+
+lemma mor_quotient_surj {G : groupe} {H : sous_groupe G} [dH : est_distingue H]
+  : function.surjective (mor_quotient H) :=
+begin
+  intro b, existsi (repr_quot b).val,
+  exact (repr_quot b).property,
+end
+
 
 -- Pour définir l'ordre, (∃ n : ℕ, x^(n:ℤ) = 1) n'est pas une proposition décidable en général
 -- Il faut donc utiliser le module classical pour que toutes les propositions soient décidables
@@ -1615,27 +1652,6 @@ end
 
 
 
-lemma mor_resp_mul {G H : groupe} {f : morphisme G H}
-  : ∀ a b : G, f (a * b) = f a * f b := λ a b, f.resp_mul a b 
-
-lemma mor_fun_eq {G H : groupe} (f : morphisme G H) : (f : G→H) = f.mor := rfl
-lemma comp_mor_fun_eq {G H K: groupe} (g : morphisme H K) (f : morphisme G H)
-  : (g∘₁f : G→K) = ((g:H→K) ∘ (f:G→H)) := rfl 
-
-lemma mor_neutre_est_neutre {G H : groupe} {f : morphisme G H} : f 1 = 1 :=
-begin
-  apply H.neutre_unique_fort (f 1) (f 1),
-  rw [← mor_resp_mul, G.neutre_droite],
-end
-
-theorem mor_inv_inv_mor {G H : groupe} {f : morphisme G H}  (a : G) : f a⁻¹ =  (f a)⁻¹ :=
-  begin
-  apply inv_unique,
-  rw ← mor_resp_mul a⁻¹ a,
-  rw inv_gauche',
-  rw mor_neutre_est_neutre,
-  end
-
 
 def est_isomorphisme {G H : groupe} (f : morphisme G H) : Prop :=
   ∃ (g : morphisme H G), function.left_inverse g f ∧ function.right_inverse g f
@@ -1668,7 +1684,7 @@ end
 def sont_isomorphes (G G' : groupe) := ∃ f : morphisme G G', est_isomorphisme f
 local notation G `≋`:40 G' := sont_isomorphes G G'
 
-lemma sont_isomorphes_symm (G G' : groupe) : (G ≋ G') ↔ (G' ≋ G) :=
+@[symm] lemma sont_isomorphes_symm (G G' : groupe) : (G ≋ G') ↔ (G' ≋ G) :=
 begin
   split; intro x;
   cases x with f pf; cases pf with g pfg; 
@@ -1676,7 +1692,7 @@ begin
   exact ⟨pfg.2, pfg.1⟩,
 end
 
-lemma sont_isomorphes_trans {G H K : groupe} : (G≋H) → (H≋K) → (G≋K) :=
+@[trans] lemma sont_isomorphes_trans {G H K : groupe} : (G≋H) → (H≋K) → (G≋K) :=
 begin
   intros gh hk,
   cases gh with f₁ t, cases t with g₁ t, cases t with pf₁ pg₁,  
@@ -2044,6 +2060,24 @@ lemma card_ss_groupe_div_card_groupe {G : groupe} (H : sous_groupe G) [fG : est_
 
 
 
+lemma mor_quot_ker_inj {G G' : groupe} {f : morphisme G G'} (fI : function.injective f)
+  : est_isomorphisme  (mor_quotient (↩ker f)) :=
+begin
+  rw carac_mor_inj at fI,
+  rw carac_est_isomorphisme, split, { -- injectif
+    intros a b ab, repeat{rw mor_quotient_id at ab},
+    have ab' := quot_gauche_exact _ _ ab,
+    cases ab' with k hk, cases hk with k_K hk,
+    rw [sous_groupe_de_est_sous_groupe_id, fI, in_singleton] at k_K,
+    rw [hk, k_K, neutre_droite],
+  }, { --surjectif
+    exact mor_quotient_surj,
+  }
+end
+
+lemma iso_quot_ker_inj {G G' : groupe} {f : morphisme G G'} (fI : function.injective f)
+  : G ≋ G/*↩ker f := by{existsi (mor_quotient _), exact mor_quot_ker_inj fI,}
+
 theorem theoreme_de_factorisation {G G': groupe} (f : morphisme G G') (H : sous_groupe G)
   [dH : est_distingue H] (H_ker : ∀ x : H, f x = 1): ∃! f' : morphisme (G/*H) G', f = f' ∘₁ (mor_quotient H) :=
 begin
@@ -2136,6 +2170,14 @@ begin
     rw [←plongeon_id, ←mor_quotient_id],
     rw [←p₁, fa_b, coe_sous_groupe], 
   }
+end
+
+lemma theoreme_isomorphisme₁_inj {G G' : groupe} {f : morphisme G G'} (fI : function.injective f)
+  : G ≋ ↩im f :=
+begin
+  have p₀ : G ≋ G/*↩ker f := iso_quot_ker_inj fI, 
+  have p₁ : G/*↩ker f ≋ ↩im f := theoreme_isomorphisme₁ _, 
+  exact sont_isomorphes_trans p₀ p₁,
 end
 
 
