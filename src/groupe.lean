@@ -2318,6 +2318,116 @@ begin
   exact sont_isomorphes_trans h₁ h₂,
 end
 
+-- Classe permettant de plonger un groupe dans un autre en fournissant une injection canonique.
+-- Cette classe est utile pour le troisième théorème d'isomorphisme: on voit dans celui-ci le 
+-- quotient (G/K)/(H/K): 
+--   -Dans le formalisme ZFC, cela ne pose pas de problème: on peut montrer 
+--    que l'ensemble H/K des classes est bien un sous ensemble de l'ensemble G/K des classes,
+--    et que leurs lois de multiplication respectives sont les mêmes, et que H/K ⊲ G/K
+--   -Dans le formaliste de Lean, en définissant les quotients avec quot.mk, G/K et H/K sont deux
+--    objets complétement distincts, et il faut alors indiquer à lean que H/K est considéré comme
+--    un sous groupe de G/K avec l'injection naturelle : λ ⟦h:H⟧@K, ⟦h:G⟧@K
+class injection_naturelle (G G': groupe) :=
+  (mor : morphisme G G')
+  (mor_inj : function.injective mor)
+
+-- Si G' injecte G par une injection i, le sous groupe représentant G' dans G est i
+@[reducible] def sous_groupe_de_injection_naturelle  (G G' : groupe) [GiG' : injection_naturelle G G']
+  : sous_groupe G' := (↩im GiG'.mor)
+
+local notation G `↪`:60 G':60 := sous_groupe_de_injection_naturelle G G' 
+
+lemma bijection_de_injection_naturelle (G G' : groupe) [i : injection_naturelle G G']
+  : G ≋ G↪G' :=
+begin
+  have p₀ : G ≋ ↩im i.mor := theoreme_isomorphisme₁_inj i.mor_inj,
+  unfold sous_groupe_de_injection_naturelle, 
+  exact p₀, 
+end
+
+lemma sous_groupe_de_injection_naturelle_id (G G' : groupe) [i : injection_naturelle G G']
+  : (G↪G') = ↩im i.mor := rfl 
+
+-- Une reformulation du fait que H/K (vu comme un ensemble de classes) est inclus dans G/K
+lemma double_quot_sub_quot {G : groupe} (H K : sous_groupe G) [HinK : K ⊆₁ H]
+  {a b : H} (a_equiv_b : ⟦a⟧@(K↘H) = ⟦b⟧@(K↘H)) : ⟦a⟧@K = ⟦b⟧@K :=
+begin
+  have aeb := quot_gauche_exact _ _ a_equiv_b,
+  cases aeb with k t, cases t with k_K pab,
+  rw pab, 
+  apply quot.sound,
+  existsi [k.val, k_K],
+  refl,
+end
+
+noncomputable def plongeon_HdK_GdK {G : groupe} {H K : sous_groupe G} [KinH : K ⊆₁ H] [dK : K⊲G]
+  : morphisme (H/*(K↘H)) (G/*K) := 
+{
+  mor := λ a, ⟦(repr_quot a).val.val⟧@K,
+  resp_mul := begin
+    intros a b,
+    rw quot_of_mul_quot', 
+    rw ←coe_mul_sous_groupe,
+    repeat{rw ←coe_sous_groupe},
+    apply double_quot_sub_quot H K,
+    rw (repr_quot ((a*b):H/*(K↘H))).property,
+    rw ←quot_of_mul_quot',
+    rw [(repr_quot a).property,(repr_quot b).property],
+  end
+}
+
+
+lemma plongeon_HdK_GdK_id {G : groupe} (H K : sous_groupe G) [KinH : K ⊆₁ H] [dK : K⊲G]
+  : ∀ a : H/*(K↘H), (plongeon_HdK_GdK a) = (⟦(repr_quot a).val.val⟧@K) := λa, rfl
+lemma plongeon_HdK_GdK_id₂ {G : groupe} (H K : sous_groupe G) [KinH : K ⊆₁ H] [dK : K⊲G]
+  : ∀ h : H, (plongeon_HdK_GdK ⟦h⟧@(K↘H)) = ⟦h.val⟧@K :=
+begin
+  intro, rw plongeon_HdK_GdK_id, apply quot.sound,
+  have p₀ := (repr_quot ⟦h⟧@(K↘H)).property,
+  have p₁ := quot_gauche_exact _ _ p₀,
+  cases p₁ with k t, cases t with k_K pk,
+  existsi k.val, existsi k_K, 
+  rw ←coe_mul_sous_groupe,
+  conv{to_lhs,rw pk},
+end
+
+lemma plongeon_HdK_GdK_im_distingue {G : groupe} (H K : sous_groupe G) [KinH : K ⊆₁ H] [dK : K⊲G] [dH : H⊲G]
+  : est_distingue ↩im (@plongeon_HdK_GdK _ H K _ _) :=
+begin
+  rw carac_est_distingue, intros B ha,
+  cases ha with A pA,
+  rw ←(repr_quot A).property at pA,
+  rw plongeon_HdK_GdK_id₂ at pA,
+  apply quot.ind,
+  intro g,
+  rw [←pA, quot_of_mul_quot', quot_of_inv_quot',quot_of_mul_quot'],
+  let ghg : H := ⟨g*(repr_quot A).val.val*g⁻¹, (carac_est_distingue H).1 dH _ (repr_quot A).val.property g⟩,
+  have p₁ : ghg.val = g * (repr_quot A).val.val * g⁻¹ := rfl,
+  rw ←p₁,
+  rw ←plongeon_HdK_GdK_id₂,
+  exact im_point_in_im _ _,
+end
+
+@[instance] noncomputable def injection_naturelle_HdK_GdK {G : groupe} (H K : sous_groupe G) [KinH : K ⊆₁ H] [dK : K⊲G]
+  : injection_naturelle (H/*(K↘H)) (G/*K) := 
+{
+  mor := plongeon_HdK_GdK, -- On définit le morphisme naturel H/K → G/K 
+  mor_inj := begin
+    intros a b pab, 
+    rw [←(repr_quot a).property, ←(repr_quot b).property],
+    have p₀ := quot_gauche_exact _ _ pab,
+    cases p₀ with k t, cases t with k_K p₀,
+    apply quot.sound,
+    existsi (⟨k, KinH.h _ k_K⟩:H), existsi k_K,
+    apply subtype.eq,
+    exact p₀,
+  end
+}
+
+@[instance] lemma HdK_distingue_dans_GdK {G : groupe} (H K : sous_groupe G) [KinH : K ⊆₁ H] [dK : K⊲G] [dH : H⊲G]
+  : ((H/*(K↘H)) ↪ (G/*K)) ⊲ (G/*K) := plongeon_HdK_GdK_im_distingue H K
+
+
 
 end groupe
 
