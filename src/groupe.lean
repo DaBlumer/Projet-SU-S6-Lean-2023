@@ -12,7 +12,18 @@ universe u
  
 
 
-/-*******************************Définitions et coercions de base ******************************-/
+/-***************************************Définitions et coercions de base ***************************************-/
+/-
+- Définitions principales :
+  - groupe 
+  - sous_groupe G
+- Coercions et notations :
+  - Pour a b : G, on a les notations a⁻¹, a*b et 1
+  - Pour G H un sous groupe de G, H peut être vu selon le contexte comme un groupe 
+    - Dans ce cas, pour a b : H, on peut aussi écrire a*b, a⁻¹ et on peut écrire (1:H) pour le neutre
+  - Pour a : G, on peut écrire a∈H pour signifier A ∈ H.sous_ens
+-/
+
 
 /-
 Définition principale d'un groupe
@@ -99,7 +110,9 @@ Mais la dernière coercion ne se fait pas (https://proofassistants.stackexchange
 instance sous_groupe_to_sous_type {G: groupe} 
   : has_coe_to_sort (sous_groupe G) (Type u) :=
   ⟨λ H, {a // a ∈ H.sous_ens}⟩ 
--- Coertion utile quand on veut voir un sous groupe comme un ensemble (ex: déf de distingué)
+
+
+-- ↓Coertions utile quand on veut voir un sous groupe comme un ensemble (ex: déf de distingué)
 instance sous_groupe_to_sous_ens {G: groupe} 
   : has_coe (sous_groupe G) (set G) :=
   ⟨λ H, H.sous_ens⟩ 
@@ -107,20 +120,11 @@ instance appartient_sous_groupe {G: groupe}
   : has_mem G (sous_groupe G) :=
   ⟨λ x H, H.sous_ens x⟩ 
 
-class sous_groupe_incl {G : groupe} (H K : sous_groupe G) : Prop :=
-  (h : (H:set G) ⊆ K)
-local notation H `⊆₁`:52 K := sous_groupe_incl H K
 
 
-instance sous_sous_groupe_to_sous_groupe {G : groupe} {H : sous_groupe G}
-  : has_coe (sous_groupe H) (sous_groupe G) :=
-  ⟨λ K, {
-    sous_ens := {x | x∈H ∧ ∀ h : x∈H, (⟨x, h⟩: H)∈K},
-    mul_stab := λa ha b hb, ⟨H.mul_stab _ ha.1 _ hb.1, λ h, K.mul_stab _ (ha.2 ha.1) _ (hb.2 hb.1)⟩, 
-    inv_stab := λa ha, ⟨H.inv_stab _ ha.1, λ h, K.inv_stab _ (ha.2 ha.1)⟩,
-    contient_neutre := ⟨H.contient_neutre, λ h, K.contient_neutre⟩
-  }⟩
-
+/-
+↓ ↓ ↓ Différents lemmes permettant de faire le lien entre les éléments et opérations dans un groupe et un sous groupe ↓ ↓ ↓ 
+-/
 lemma eq_in_ss_groupe_iff_eq {G : groupe} {H : sous_groupe G} (a b : H)
   : ((a:G) = ↑b) ↔ (a = b) :=
 begin
@@ -145,25 +149,9 @@ lemma coe_sous_groupe₂ {G : groupe} {H : sous_groupe G} (a : G) (a_H : a∈H)
 lemma coe_one_sous_groupe {G : groupe} {H : sous_groupe G}
   : (1 : (H:groupe)).val = (1 : G) := rfl
 
-def sous_groupe_to_sous_sous_groupe {G : groupe} (H : sous_groupe G) 
-  (K: sous_groupe G) [p : K ⊆₁ H] : sous_groupe H := 
-{
-  sous_ens := {g | g.val ∈ K},
-  mul_stab := λ a pa b pb, K.mul_stab _ pa _ pb,
-  inv_stab := λ a pa, K.inv_stab _ pa,
-  contient_neutre := K.contient_neutre, 
-}
-local notation K `↘`:65 H:65 := sous_groupe_to_sous_sous_groupe H K 
-example (G : groupe) (H K : sous_groupe G) (KinH: (K ⊆₁ H)) := (K↘H)
-
-@[instance] lemma ss_gr_of_ss_ss_gr_sub {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
-  : (K : sous_groupe G) ⊆₁ H := ⟨λ x px, px.1⟩
 
 
-lemma sous_groupe_down_ens {G : groupe} {H K: sous_groupe G}  (KinH : K ⊆₁ H)
-  : ((K↘H): set ((H : groupe) : Type*)) = {x | x.val ∈ K} := rfl
-lemma sous_groupe_up_ens {G : groupe} {H : sous_groupe G} (K : sous_groupe H)
-  : ((K : sous_groupe G) : set G) = {x | x∈H ∧ ∀p:x∈H, (⟨x,p⟩:H)∈K} := rfl
+-- Deux sous groupes d'un même groupe G sont égaux ssi leurs ensembles sont égaux
 lemma sous_groupe_eq_iff {G : groupe} {H H': sous_groupe G}
   : H = H' ↔ (H:set G) = (H':set G) :=
 begin
@@ -172,6 +160,87 @@ begin
   cases H, cases H', simp at p ⊢, rw p,
 end 
 
+
+/-***************************************Fin Définitions et coercions de base **************************************-/
+
+
+
+
+
+
+/-**********************Diverses définitions pour gérer les sous groupes de sous groupes*************************** -/
+/-
+- Section permettant de travailler avec des chaines de sous groupes, dans la situation K < H < G
+- Il y a deux possibilités ici : 
+  - Donnés un groupe G, H : sous_groupe G et K : sous_groupe H, on voudrait voir K comme un sous_groupe G
+    --> C'est fait avec une coercion qui associe à tout élément de sous_groupe H l'élément de sous_groupe G correspondant
+    --> Pas besoin de notation dans ce cas, lean pourra faire la conversion selon le contexte
+  - Données un groupe G, H et K deux sous_groupe G et une preuve que K est inclus dans H, voir K comme un sous_groupe H
+    --> Pas possible de le faire avec une coercion de (sous_groupe G) vers (sous_groupe H) car c'est à condition que K⊆H
+        (est-il possible d'avoir une coercion qui dépend d'une condition sur l'ensemble de départ ?)
+- Il faut ensuite faire le lien entre ces deux opérations en montrant qu'elles sont inverses l'une de l'autre : 
+  - Si on convertit un sous groupe de H vers un sous groupe de G, et qu'on reconvertit le résultat vers un sous groupe de H, on doit 
+    revenir au même sous groupe de départ
+  - Inversement, si on a H < G, K < G et K ⊆ H, en convertissant K vers un sous_groupe de H, puis en voyant le résultat de cette
+    convertion comme un sous groupe de G, on doit avoir le même objet exactement que celui de départ.
+
+- Notations introduites dans cette partie : 
+  - K ⊆₁ H pour K et H deux sous_groupe G : veut dire que l'ensemble de K est inclus dans l'ensemble de H
+    --> S'écrit grâce à \sub\1
+    --> explication de pouquoi cette notation au lieu de ⊆ plus bas.
+  - (K↘H) avec H et K deux sous_groupe G et K ⊆₁ H : veut dire K vu comme un sous_groupe H
+    --> S'écrit grâce à \dr 
+-/
+
+
+-- Classe représentant une preuve que K.sous_ens ⊆ H.sous_ens. 
+-- C'est une classe afin de permettre à lean de chercher une instance tout seul pour pouvoir convertir K en sous groupe de H
+-- La notation ⊆ n'est pas utilisée car si on l'utilise (avec has_sub) lean ne devine plus que (H ⊆ K) est une instance de sous_groupe_incl 
+class sous_groupe_incl {G : groupe} (H K : sous_groupe G) : Prop :=
+  (h : (H:set G) ⊆ K)
+local notation H `⊆₁`:52 K := sous_groupe_incl H K
+
+
+-- Convertion n°1 : On voit les sous_groupes de H comme des sous_groupes de G
+instance sous_sous_groupe_to_sous_groupe {G : groupe} {H : sous_groupe G}
+  : has_coe (sous_groupe H) (sous_groupe G) :=
+  ⟨λ K, {
+    sous_ens := {x | x∈H ∧ ∀ h : x∈H, (⟨x, h⟩: H)∈K},
+    mul_stab := λa ha b hb, ⟨H.mul_stab _ ha.1 _ hb.1, λ h, K.mul_stab _ (ha.2 ha.1) _ (hb.2 hb.1)⟩, 
+    inv_stab := λa ha, ⟨H.inv_stab _ ha.1, λ h, K.inv_stab _ (ha.2 ha.1)⟩,
+    contient_neutre := ⟨H.contient_neutre, λ h, K.contient_neutre⟩
+  }⟩
+
+-- Convertion n°2 : On voit un sous groupe de G inclus dans H comme un sous groupe de H
+def sous_groupe_to_sous_sous_groupe {G : groupe} (H : sous_groupe G) 
+  (K: sous_groupe G) [p : K ⊆₁ H] : sous_groupe H := 
+{
+  sous_ens := {g | g.val ∈ K},
+  mul_stab := λ a pa b pb, K.mul_stab _ pa _ pb,
+  inv_stab := λ a pa, K.inv_stab _ pa,
+  contient_neutre := K.contient_neutre, 
+}
+-- Notation pour la convertion n°2 : on écrit K↘H pour voir K comme sous groupe de H. ↘ est écrit avec \dr
+local notation K `↘`:65 H:65 := sous_groupe_to_sous_sous_groupe H K 
+example (G : groupe) (H K : sous_groupe G) (KinH: (K ⊆₁ H)) := (K↘H)
+
+-- lemme montrant la cohérence des deux conversions : 
+-- un sous groupe de H vu comme un sous groupe de G, est inclus dans H
+@[instance] lemma ss_gr_of_ss_ss_gr_sub {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
+  : (K : sous_groupe G) ⊆₁ H := ⟨λ x px, px.1⟩
+
+
+
+-- ↓ Description de l'ensemble du sous groupe de H obtenu à partir de K ⊆ H
+lemma sous_groupe_down_ens {G : groupe} {H K: sous_groupe G}  (KinH : K ⊆₁ H)
+  : ((K↘H): set ((H : groupe) : Type*)) = {x | x.val ∈ K} := rfl
+-- ↓ Description de l'ensemble du sous groupe de G obtenu à partir d'un sous groupe de H
+lemma sous_groupe_up_ens {G : groupe} {H : sous_groupe G} (K : sous_groupe H)
+  : ((K : sous_groupe G) : set G) = {x | x∈H ∧ ∀p:x∈H, (⟨x,p⟩:H)∈K} := rfl
+
+-- ↓ Lemme n°1 montrant qu'en faisant la convertion 
+--       (sous_groupe de G inclus dans  --> sous_groupe de H --> sous_groupe de G)
+--   on tombe sur le sous_groupe de départ
 lemma sous_groupe_up_down {G : groupe} {H : sous_groupe G} (K : sous_groupe H) 
   : ((K : sous_groupe G)↘H) = K :=
 begin
@@ -182,6 +251,9 @@ begin
     exact ⟨a.property, λ pp, by{have : pp=a.property :=rfl, rw this, cases a, exact p,}⟩, 
 end
 
+-- Lemme n°2 montrant qu'en faisant la convertion
+--       (sous_groupe de H) --> sous_groupe de G inclus dans H --> sous_groupe de H
+-- on tombe sur le sous_groupe de départ.
 lemma sous_groupe_down_up {G : groupe} {H K: sous_groupe G} (KinH: K ⊆₁ H)
   : (K↘H : sous_groupe G) = K :=
 begin
@@ -192,27 +264,51 @@ begin
     exact ⟨(KinH.h _ p), (λ_, p)⟩, 
 end
 
+
+/-********************FIN Diverses définitions pour gérer les sous groupes de sous groupes************************ -/
+
+
+
+/-************************************Définitions et notations de base morphismes********************************** -/
+/-
+- Définitions principales :
+  - morphisme G H : représentant un mortphisme entre deux groupes.
+  - comp_mor f f' : composition de morphismes (et preuve implicite que la composée de deux morphismes en est un aussi)
+
+- Notations introduites : 
+  - G →* H pour parler d'un morphisme de G vers H
+-/
+
 -- Définition d'un morphisme de groupes
 structure morphisme (G H : groupe) :=
   (mor : G → H)
   (resp_mul : ∀ a b : G, mor (a*b) = (mor a) * (mor b) )
 
--- Notation pour le type des morphismes analogue à celle pour les fonctions:
+-- Notation pour le type des morphismes analogue à celle pour les fonctions: (→* est écrite avec \to*)
 local notation G `→*`:51 H:51 := morphisme G H
 
 -- Permet de voir un morphisme comme l'application sous-jacente quand c'est nécessaire
+-- On peut alors écrire directement (f a) au lieu de (f.mor a)
 instance morphisme_to_fonction {G H : groupe}
   : has_coe_to_fun (G  →* H) (λ _, G → H) :=
   ⟨λ m, m.mor⟩
 
+
+-- Définition de la composée de deux morphismes
 def comp_mor {G H K: groupe} (g : H  →* K) (f : G  →* H) : G  →* K := 
   {
     mor := g.mor∘f.mor,
     resp_mul := λ g₁ g₂, by {simp, rw [f.resp_mul, g.resp_mul]} 
   }
-
+-- ↓ Notation pour la composée de deux morphismes, s'écrit \comp\1
+-- ↓ Attention, écrire g∘f exprimera la fonction composée, sans la preuve que c'est un morphisme, 
+-- ↓ et pour avoir le morphisme composé il faut faire g∘₁f
 local notation g `∘₁`:51 f := comp_mor g f
 
+
+/-
+Différents lemmes utiles pour montrer que deux morphismes sont égaux, et pour travailler avec la composée de morphismes
+-/
 lemma morphisme_eq_iff {G H : groupe} (f f' : G  →* H)
   : f = f' ↔ (f : G→H) = (f' : G→H) :=
 begin
@@ -236,6 +332,11 @@ lemma comp_mor_id {G H K: groupe} (g : H  →* K) (f : G  →* H)
 lemma mor_id {G H : groupe} (f : G  →* H)
   : ∀ x, f x = f.mor x := λ x, rfl
 
+/-**********************************FIN Définitions et notations de base morphismes******************************** -/
+
+
+
+/-**************************************EXEMPLES coercions et notations diverses*********************************** -/
 section -- exemples d'utilisation transparente des coercions
 
 variables (G G' G'': groupe) (H : sous_groupe G)
@@ -243,7 +344,7 @@ variables (G G' G'': groupe) (H : sous_groupe G)
 -- ici G est vu comme G.ens, G' comme G'.ens et H comme {a : G.ens // a∈H.sous_ens}
 variables (g₁ g₂ : G) (g₁' g₂' : G') (h₁ h₂ : H) 
 
-variables (f : G  →* G') (g : morphisme G' G'') (h : morphisme G' H)
+variables (f : G  →* G') (g : G' →* G'') (h : G' →* H)
 
 example : G' := f g₁ -- ici f est vu comme f.mor
 
@@ -256,10 +357,15 @@ Dans cet exemple plusieures inférences intérviennent :
 example : G' := f (g₁*h₁) 
 
 -- Ici G est vu comme G.ens, H comme {a : G.ens // a∈H.sous_ens}
--- et on peut définir la composée des deux morphismes simplement : 
+-- et on peut définir l'application composée des deux morphismes simplement : 
 example : G → H := h∘f
+-- Pour avoir le morphisme composé :
+example : G →* H := h∘₁f
+
 
 end -- fin exemples
+/-***********************************FIN EXEMPLES coercions et notations diverses******************************** -/
+
 
 
 
@@ -267,11 +373,20 @@ end -- fin exemples
 -- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
 namespace groupe
 
+/-****************************************Lemmes de base pour les groupes****************************************** -/
+
+
+-- Réécriture des axiomes en tant que lemmes avec les notations * ⁻¹ et 1.
+-- TODO : éviter le ' en faisant la définition d'un groupe en deux temps OU en renommant les axiomes dans la déf
 lemma mul_assoc' (G : groupe) (a b c : G) : a * b * c = a * (b * c) := G.mul_assoc a b c
 lemma inv_gauche' (G : groupe) (a : G) : a⁻¹*a = 1 := G.inv_gauche a
 lemma neutre_gauche' (G : groupe) (a : G) : 1*a = a := G.neutre_gauche a
 
 
+
+/-
+Différents lemmes utiles :
+-/
 
 lemma inv_droite (G: groupe) : ∀ a : G.ens, a * a⁻¹ = 1 :=
   begin
@@ -295,22 +410,12 @@ lemma neutre_droite (G : groupe) : ∀ a : G.ens, a*1 = a :=
  end
 
 
-
-
-
 lemma neutre_unique {G: groupe} (e : G.ens) (h : ∀ a, e*a = a ) : e = 1 :=
   begin
   have h1 := h 1,
   rw neutre_droite at h1,
   rwa h1,
   end
-
-
-
-
-
-
-
 
 
 lemma inv_unique (G: groupe) {a : G} {b : G} (h: b*a = 1) : b = a⁻¹ :=
@@ -332,6 +437,7 @@ lemma inv_involution (G : groupe) (a : G) : (a⁻¹)⁻¹ = a :=
   rw neutre_gauche',
   end
 
+
 lemma mul_droite_div_droite (G : groupe) (a b c : G) : a * b = c ↔ a = c * b⁻¹ :=
   begin
   split,
@@ -346,6 +452,7 @@ lemma mul_droite_div_droite (G : groupe) (a b c : G) : a * b = c ↔ a = c * b�
   rw inv_gauche',
   rw neutre_droite,
   end
+
 
 lemma mul_gauche_div_gauche (G : groupe) (a b c : G) : a * b = c ↔ b = a⁻¹ * c :=
   begin
@@ -362,6 +469,7 @@ lemma mul_gauche_div_gauche (G : groupe) (a b c : G) : a * b = c ↔ b = a⁻¹ 
   rw neutre_gauche',
   end
 
+
 lemma inv_of_mul (G: groupe) (a b : G) : (a*b)⁻¹ = b⁻¹ * a⁻¹ :=
   begin
   rw ← mul_gauche_div_gauche,
@@ -370,6 +478,7 @@ lemma inv_of_mul (G: groupe) (a b : G) : (a*b)⁻¹ = b⁻¹ * a⁻¹ :=
   rw ← mul_assoc',
   rw inv_droite,
   end
+
 
 lemma mul_droite_all (G : groupe) (a b c : G) : a=b ↔ a*c = b*c :=
   begin
@@ -381,6 +490,7 @@ lemma mul_droite_all (G : groupe) (a b c : G) : a=b ↔ a*c = b*c :=
   rw  [mul_assoc', inv_droite, neutre_droite] at h, 
   exact h,
   end
+
 
 lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
   begin
@@ -395,8 +505,10 @@ lemma mul_gauche_all (G: groupe) (a b c : G) : (a=b) ↔ (c*a = c*b) :=
   rw neutre_gauche'
   end
 
+
 lemma inv_neutre_eq_neutre (G : groupe) : (1:G)⁻¹=1 := 
   by {rw [G.mul_gauche_all _ _ 1, inv_droite, neutre_droite],}
+
 
 lemma eq_of_inv_eq (G : groupe) (a b : G) : (a⁻¹=b⁻¹) ↔ (a=b) :=
   begin
@@ -406,12 +518,14 @@ lemma eq_of_inv_eq (G : groupe) (a b : G) : (a⁻¹=b⁻¹) ↔ (a=b) :=
     rw h,
   end
 
+
 lemma mul_right_inv_eq_one_of_eq (G : groupe) (a b : G) : (a=b) ↔ (a*b⁻¹ = 1) :=
   begin
   split;intro h,
     rw h, exact inv_droite _ _,
     rw [mul_droite_div_droite, inv_involution, neutre_gauche'] at h, exact h,
   end
+
 
 lemma mul_left_inv_eq_one_of_eq (G : groupe) (a b : G) : (a=b) ↔ (b⁻¹*a = 1) :=
   begin
@@ -420,17 +534,21 @@ lemma mul_left_inv_eq_one_of_eq (G : groupe) (a b : G) : (a=b) ↔ (b⁻¹*a = 1
     rw [mul_gauche_div_gauche, inv_involution, neutre_droite] at h, exact h,
   end
 
+
 lemma neutre_unique_fort (G : groupe) (e a : G) (h : e*a = a) : e = 1 :=
   by {rw [mul_droite_div_droite, inv_droite] at h, exact h}
 
+/-**************************************FIN Lemmes de base pour les groupes**************************************** -/
 
 
 
+/-***************************************Lemmes de base pour les morphismes***************************************** -/
 
 lemma mor_resp_mul {G H : groupe} {f : G  →* H}
   : ∀ a b : G, f (a * b) = f a * f b := λ a b, f.resp_mul a b 
 
 lemma mor_fun_eq {G H : groupe} (f : G  →* H) : (f : G→H) = f.mor := rfl
+
 lemma comp_mor_fun_eq {G H K: groupe} (g : H  →* K) (f : G  →* H)
   : (g∘₁f : G→K) = ((g:H→K) ∘ (f:G→H)) := rfl 
 
@@ -447,6 +565,8 @@ theorem mor_inv_inv_mor {G H : groupe} {f : G  →* H}  (a : G) : f a⁻¹ =  (f
   rw inv_gauche',
   rw mor_neutre_est_neutre,
   end
+
+/-**************************************FIN Lemmes de base pour les morphismes************************************** -/
 
 
 def puissance_n {G : groupe} (x : G) : ℕ → G
