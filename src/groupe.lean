@@ -1189,6 +1189,22 @@ end
 
 /-***************************************FIN Sous groupes distingues et exemples **************************************-/
 
+
+
+
+/-****************************************Ensemble quotient et groupe quotient ****************************************-/
+/-
+- Définitions principales :
+  - rel_gauche_mod et rel_droite_mod : les deux relations d'équivalence modulo un sous groupe
+    - Notation utilisée : G%.H pour rel_gauche_mod et H.%G pour rel_droite_mod
+  - quotient_gauche et quotient_droite : les deux types quotient
+    - Notation utilisée : G /. H pour quotient_gauche et H .\ G pour quotient_droite
+  - groupe_quotient : si H ⊲ G, le groupe quotient de G sur H
+    - Notation utilisée : G /* H
+  - mor_quotient : le morphisme naturel de G vers G/*H qui renvoie chaque élément à sa classe
+  - repr_quot : application de G/*H vers G qui associe à chaque classe un représentant arbitraire.
+-/
+
 def rel_gauche_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
   λ x y : G, y ∈ x *₂ H 
 def rel_droite_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
