@@ -1203,8 +1203,14 @@ end
     - Notation utilisée : G /* H
   - mor_quotient : le morphisme naturel de G vers G/*H qui renvoie chaque élément à sa classe
   - repr_quot : application de G/*H vers G qui associe à chaque classe un représentant arbitraire.
+- Notations introduites : 
+  - G%.H et H.%G pour les deux relations d'équivalence
+  - G /* H pour le groupe quotient
+  - ⟦a⟧@H pour la classe d'équivalence de a modulo H. ⟦a⟧ s'écrit \[[a\]] 
 -/
 
+
+-- ↓ ↓ ↓ On définit les deux relations d'équivalence et leurs notations 
 def rel_gauche_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
   λ x y : G, y ∈ x *₂ H 
 def rel_droite_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
@@ -1214,7 +1220,8 @@ local notation G ` %. `:35 H:34 := rel_gauche_mod H
 local notation H ` .% `:35 G:34 := rel_droite_mod H
 
 
-lemma distingue_gde {G:groupe} {H : sous_groupe G} (dH : est_distingue H)
+-- Si H est distingué dans G, les deux relations sont les mêmes
+lemma distingue_gde {G:groupe} (H : sous_groupe G) [dH : H ⊲ G]
   : (G %. H) = (H .% G) :=
   begin
     unfold rel_droite_mod, 
@@ -1222,6 +1229,8 @@ lemma distingue_gde {G:groupe} {H : sous_groupe G} (dH : est_distingue H)
     apply funext, intro, apply funext, intro y,  rw dH, 
   end
 
+
+-- ↓ ↓ ↓ Deux éléments a et b sont équivalents mod H ssi aH = bH
 lemma rel_gauche_carac₁ {G : groupe} (H : sous_groupe G) (a b : G)
   : rel_gauche_mod H a b ↔ a *₂ H = b *₂ H :=
 begin
@@ -1243,8 +1252,8 @@ begin
     rw neutre_droite, 
   }
 end
-
-lemma rel_gauche_carac₂ {G : groupe} (H : sous_groupe G) (a b : G) {h h' : H}
+-- ↓ ↓ ↓ Si on a a*h = b*h' pour h et h' dans H, alors a et b sont équivalents mod H
+lemma rel_gauche_carac₂ {G : groupe} {H : sous_groupe G} {a b : G} {h h' : H}
   (p : a*h = b*h') : rel_gauche_mod H a b :=
 begin
   have p' := p.symm,
@@ -1253,6 +1262,10 @@ begin
   exact p',
 end
 
+
+/-
+↓ ↓ ↓ Lemmes montrant que la relation à gauche est une relation d'équivalence ↓ ↓ ↓  
+-/
 lemma rel_gauche_refl {G : groupe} (H : sous_groupe G) (a : G) 
   : (G %. H) a a :=
 begin
@@ -1282,15 +1295,8 @@ end
 
 
 
-lemma distingue_rels_equiv { G : groupe} {H : sous_groupe G} 
-  (dH : est_distingue H) : (G %. H) = (H .% G) :=
-begin
-  unfold rel_gauche_mod, unfold rel_droite_mod,
-  apply funext,
-  intro, apply funext, intro, 
-  rw dH.h,
-end
-
+-- Lemme montrant que si H est distingué, alors la relation d'équivalence à gauche est compatible avec la multiplication
+-- Autrement dit si a ≣ c [H] et b ≣ d [H], alors a*b ≣ c*d [H]
 lemma mul_induite_bien_def {G: groupe} {H: sous_groupe G} (dH: est_distingue H)
   {a b c d : G} (rac : (G %. H) a c) (rbd : (G %. H) b d)
   : (G %. H) (a*b) (c*d) :=
@@ -1318,6 +1324,17 @@ begin
   apply Exists.intro h₆, apply Exists.intro a₆, assumption,  
 end  
 
+
+/-
+↓ ↓ ↓ On définit les deux ensembles quotients et leurs notations ↓ ↓ ↓
+- On utilise ici 'quot' qui est un outil de la base logique de Lean définissant le type quotient
+d'un type α par une relation r sur α (sans nécessiter que r soit une relation d'équivalence)
+- Le type quotient produit est le quotient de α par la relation d'équivalence engendrée par r
+  (c'est à dire la plus petite relation d'équivalence contenant r)
+- Dans notre cas, (G %.H) est déjà une relation d'équivalence, il suffit alors de montrer le lemme
+  quot_gauche_exact qui vient plus bas, qui garantit que si deux éléments ont la même classe, alors ils 
+  sont équivalents.
+-/
 def quotient_gauche {G : groupe} (H : sous_groupe G) 
   := quot (G %. H)
 def quotient_droite {G : groupe} (H : sous_groupe G)
@@ -1328,11 +1345,23 @@ instance g_has_quotient_gauche {G: groupe}  : has_quotient_gauche G (sous_groupe
 instance g_has_quotient_droite {G: groupe} : has_quotient_droite G (sous_groupe G)
   := ⟨λ H, quotient_droite H⟩
  
+
+ -- Notation pour avoir la classe de a modulo H : ⟦a⟧@H
 local notation `⟦`:max a`⟧@`:max H:max := quot.mk (rel_gauche_mod H) a 
 
+
+/- ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓
+- Partie dans laquelle on fait le lien entre le type quotient tel que défini dans Lean, et la représentation en
+ensemble de classes telle qu'on utilise en mathématiques classiques.
+- On établit une bijection entre le type quotient (G/.H) et le type des ensembles de la forme gH.
+- Cette partie n'est utilisée nulle part ailleurs dans la suite.
+-/
+
+-- On définit le type des classes(ensembles)
 def classes_equiv_gauche {G : groupe} (H : sous_groupe G) :=
   {X // ∃ a : G, X = mul_gauche_ens a H}
 
+-- Fonction qui associe à chaque élément g sa classe(ensemble) gH
 def elem_to_classe_gauche {G : groupe} (H : sous_groupe G)
   (x : G) : classes_equiv_gauche H := 
 {
@@ -1340,6 +1369,8 @@ def elem_to_classe_gauche {G : groupe} (H : sous_groupe G)
   property := by {apply Exists.intro x, refl,}
 }
 
+
+-- On montre que cette représentation respecte bien la relation d'équivalence
 lemma e_to_cg_resp_rel {G : groupe} (H : sous_groupe G) (a b : G) (a_b : (G %. H) a b) 
   : elem_to_classe_gauche H a = elem_to_classe_gauche H b :=
 begin
@@ -1348,9 +1379,20 @@ begin
   rw ← rel_gauche_carac₁, exact a_b,
 end
 
+/-
+- On définit ici une bijection entre les deux représentations
+- On utilise quot.lift qui nous permet, grâce au fait que cette représentation respecte la relation,
+  de définir la fonction qui va de G/.H vers le type des classes qui respecte la fonction elem_to_classe_gauche.
+  --> C'est ce qu'on fait d'habitude en posant une définition de la sorte en ayant f : G → X
+                            F :  G/H → X
+                                 ⟦g⟧ ↦ f(g)
+      et on dit que F est bien définie car pour g et g' ayant la même classe, f(g) = f(g')
+    Ce procédé est exactement la fonction quot.lift sur Lean. Son premier argument est la fonction f, et son second
+    est une preuve que f(g)=f(g') pour tous g g' ayant la même classe
+-/
 def quot_to_classe_gauche {G : groupe} (H : sous_groupe G) : (G/.H) → classes_equiv_gauche H :=
   quot.lift (elem_to_classe_gauche H) (e_to_cg_resp_rel H)
-
+-- ↓ On montre que la fonction définie ci-dessus est bien une bijection.
 def bij_classes_equiv_quot {G : groupe} (H : sous_groupe G)
   : bijection (G /. H) (classes_equiv_gauche H) :=
 {
@@ -1381,22 +1423,35 @@ def bij_classes_equiv_quot {G : groupe} (H : sous_groupe G)
   end
 }
 
+-- ↓ Par définition, notre bijection associe à ⟦a⟧@H l'ensemble aH
 lemma quot_to_classe_gauche_id {G : groupe} (H : sous_groupe G)
   (a : G) : (quot_to_classe_gauche H (quot.mk _ a)).val = a *₂ H := rfl
-
+-- ↓ On énonce le même lemme que précédemment sous une forme différente
 lemma quot_to_classe_gauche_id₂ {G : groupe} (H : sous_groupe G)
   (a : G) : (quot_to_classe_gauche H (quot.mk _ a)) = ⟨a *₂ H, (quot_to_classe_gauche H (quot.mk _ a)).property⟩ := rfl
-
+-- ↓ On fait un lemme à part pour dire que c'est une bijection
 lemma quot_to_classe_gauche_prop {G : groupe} {H : sous_groupe G}
   : function.bijective (quot_to_classe_gauche H) := (bij_classes_equiv_quot H).property
+/-
+FIN de la partie établir une bijection entre les deux représentations
+-/
 
+
+/-
+Fonction importante : nous donne un représentant quelquonque pour chaque classe d'équivalence.
+  --> noncomputable car en faisant un choix quelquonque, on doit utiliser des axiomes de classical
+-/
 noncomputable def repr_quot {G : groupe} {H : sous_groupe G} (a : G/.H) : {g // (⟦g⟧@H) = a} :=
   ⟨choose (quot.exists_rep a), prop_of_choose (quot.exists_rep a)⟩
-
+-- ↓ Par définition, la classe d'un représentant est lui même
 lemma class_of_repr_quot {G : groupe} {H : sous_groupe G} (a : G/.H)
   : (⟦repr_quot a⟧@H) = a := (repr_quot a).property
 
 
+/-
+Lemme important : établissant que le type quotient G/.H est bien le quotient de G par la relation d'équivalence G%.H
+Si a et b ont la même classe, alors ils sont équivalents
+-/
 lemma quot_gauche_exact {G : groupe} {H : sous_groupe G} (a b : G)
    (p : (⟦a⟧@H) = (⟦b⟧@H)) : rel_gauche_mod H a b :=
 begin
@@ -1408,6 +1463,19 @@ begin
   rw rel_gauche_carac₁,
   exact p', 
 end
+
+
+/- ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ 
+- Dans cette partie, on définit en deux étapes la multiplication dans le groupe quotient, en utilisant encore une fois quot.lift
+    - On définit d'abord mul_partielle_gauche_ : G×G → G/.H qui associe simplement à a et b la classe de a*b
+    - On lift une fois pour obtenir mul_partielle_gauche_quotient_ : G×(G/H) → (G/H) définie par :
+                        (a, ⟦b⟧) ↦ mul_partielle_gauche_ a b
+      et qui est bien définie car pour tous b b' équivalents, mul_partielle_gauche_ a b = mul_partielle_gauche_ a b'
+    - On lift une seconde fois pour obtenir mul_quotient_ : (G/H) × (G/H) → (G/H), la vraie multiplication, définie par 
+                        (⟦a⟧, ⟦b⟧) ↦ mul_partielle_gauche_quotient_ a b
+      et qui est encore une fois bien définie car mul_partielle_gauche_quotient_ est compatible avec la relation d'équivalence
+- On définit ensuite l'inverse, qui est défini en faisant un lift une seule fois à partir de la fonction inverse de G 
+-/
 
 def mul_partielle_gauche_ {G : groupe} {H : sous_groupe G} (a : G)
   : G → (G/.H) :=
@@ -1452,20 +1520,20 @@ def inv_quotient_ {G : groupe} {H: sous_groupe G} (dH: est_distingue H)
       rw G.mul_droite_div_droite at eq₁, 
       have : (H .% G) b⁻¹ a⁻¹,
         apply Exists.intro h₁, apply Exists.intro a₁, assumption,
-      rw distingue_gde dH, assumption, 
+      rw distingue_gde H, assumption, 
     have : (G %. H) a⁻¹ b⁻¹, 
       exact rel_gauche_symm H b⁻¹ a⁻¹ t₁, 
     exact quot.sound this, 
   end
   )
+/-
+FIN des définitions de la multiplication et de l'inverse dans G/*H
+-/
 
-
+-- Propriété vérifiée par définition : ⟦a⟧*⟦b⟧ = ⟦a*b⟧
 lemma quot_of_mul_quot {G: groupe} {H: sous_groupe G} {dH : est_distingue H}
-  : ∀ a b : G, mul_quotient_ dH (⟦a⟧@H) (⟦b⟧@H) = ⟦a*b⟧@H :=
-begin
-  intros, unfold mul_quotient_, unfold mul_partielle_gauche_quotient_, refl, 
-end
-
+  : ∀ a b : G, mul_quotient_ dH (⟦a⟧@H) (⟦b⟧@H) = ⟦a*b⟧@H := λ a b, rfl
+-- ↓ Analogue à repr_quot X, existe_repr_of_quot X est une preuve d'existence d'un représentant, sans pour autant en fournir un
 lemma existe_repr_of_quot {G : groupe} {H : sous_groupe G}
   : ∀ X : (G/.H), ∃ x : G, X = (⟦x⟧@H) :=
 begin
@@ -1474,6 +1542,10 @@ begin
   exact quot.ind this X, 
 end
 
+
+/-
+Définition du groupe quotient G/*H et notation pour celui ci, ainsi que du morphisme naturel G → G/H
+-/
 def groupe_quotient {G : groupe} (H : sous_groupe G) [dH : est_distingue H] : groupe :=
 {
  ens := G /. H,
@@ -1507,26 +1579,34 @@ def groupe_quotient {G : groupe} (H : sous_groupe G) [dH : est_distingue H] : gr
 
 local notation G ` /* `:61 H:61 := @groupe_quotient G H _
 
+-- Conversion automatique depuis l'ensemble (le type) quotient et sa structure de groupe associée
 instance ens_quot_to_groupe_quot {G : groupe } {H : sous_groupe G} [H ⊲ G] : has_coe (G/.H) (G/*H)
   := ⟨id⟩
 
+-- On définit (et montre que c'est un morphisme) le morphisme de classe G → G/H
 def mor_quotient {G : groupe} (H : sous_groupe G) [dH: est_distingue H] : morphisme G (G/*H) :=
 {
   mor := λ g, ⟦g⟧@H,
   resp_mul := @quot_of_mul_quot G H dH,
 }
 
+
+/-
+Différents lemmes permettant de travailler avec les quotients
+-/
 lemma mor_quotient_id {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
   : ∀ a : G, mor_quotient H a = ⟦a⟧@H := λ a, rfl
-
+-- ↓ La multiplication sur G/H est compatible avec celle sur G
 lemma quot_of_mul_quot' {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
   : ∀ a b : G, ( (⟦a⟧@H * ⟦b⟧@H) : G/*H ) = (⟦a*b⟧@H) := @quot_of_mul_quot G H dH
+-- ↓ L'inverse est aussi compatible
 lemma quot_of_inv_quot' {G : groupe} {H : sous_groupe G} [dH : est_distingue H]
   : ∀ a : G, ((⟦a⟧@H)⁻¹ : G/*H) = ⟦a⁻¹⟧@H :=
   by{intro, rw [←mor_quotient_id, ← mor_quotient_id, mor_inv_inv_mor]}
+-- ↓ le neutre du groupe quotient est la classe du neutre dans G
 lemma one_quot_is_class_one {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
   : (1: G/*H) = ⟦1⟧@H := rfl
-
+-- ↓ multiplier par un élément de H ne change pas la classe
 lemma class_xh_is_x {G : groupe} {H : sous_groupe G} [dH: est_distingue H]
   (a : G) (h : H) : (⟦a*h⟧@H) = (⟦a⟧@H) :=
 begin
@@ -1534,6 +1614,7 @@ begin
   existsi h.val, existsi h.property, refl, 
 end
 
+-- ↓ Tout élément de la classe de 1 est dans H
 lemma repr_quot_one_in {G : groupe} (H : sous_groupe G) [dH: est_distingue H]
   : (repr_quot (1:G/*H)).val ∈ H :=
 begin
@@ -1545,7 +1626,7 @@ begin
   rw ←ph,
   exact H.inv_stab _ h_H,
 end
-
+-- ↓ la classe de 1 est exactement H
 lemma class_one_iff {G : groupe} (H : sous_groupe G) [dH: est_distingue H] (a : G)
   : (⟦a⟧@H) = (1:G/*H) ↔ a ∈ H :=
 begin
@@ -1558,6 +1639,7 @@ begin
 end
 section
 
+-- L'application classe mor_quotient est surjective
 lemma mor_quotient_surj {G : groupe} {H : sous_groupe G} [dH : est_distingue H]
   : function.surjective (mor_quotient H) :=
 begin
@@ -1565,6 +1647,14 @@ begin
   exact (repr_quot b).property,
 end
 
+/-**************************************FIN Ensemble quotient et groupe quotient **************************************-/
+
+
+
+
+
+
+/-*********************************Définitions et lemmes ordre et groupe cyclique **************************************-/
 
 -- Pour définir l'ordre, (∃ n : ℕ, x^(n:ℤ) = 1) n'est pas une proposition décidable en général
 -- Il faut donc utiliser le module classical pour que toutes les propositions soient décidables
@@ -1892,7 +1982,7 @@ end
 
 
 end
-/-******************************Fin Définitions et coercions de base *****************************-/
+/-*******************************FIN Définitions et lemmes ordre et groupe cyclique ************************************-/
 
 
 
