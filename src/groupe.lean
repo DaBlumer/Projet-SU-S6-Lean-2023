@@ -373,6 +373,7 @@ end -- fin exemples
 -- permet également de "cacher" nos noms de théorèmes pour éviter les conflits 
 namespace groupe
 
+
 /-****************************************Lemmes de base pour les groupes****************************************** -/
 
 
@@ -569,6 +570,23 @@ theorem mor_inv_inv_mor {G H : groupe} {f : G  →* H}  (a : G) : f a⁻¹ =  (f
 /-**************************************FIN Lemmes de base pour les morphismes************************************** -/
 
 
+
+
+
+
+/-*********************************Définition de lemmes de calcul pour les puissances********************************-/
+/-
+- Définitions principales :
+  - puissance_n : la puissance d'un élément du groupe par un entier naturel (ℕ) 
+  - puissance_z : la puissance d'un élément du groupe par un entier relatif (ℤ)
+- Notations introduites :
+  - x^k avec k un entier naturel OU un entier relatif 
+-/
+
+
+/-
+Définitions des deux fonctions de puissance et des notations
+-/
 def puissance_n {G : groupe} (x : G) : ℕ → G
   | nat.zero := 1
   | (nat.succ n) :=  x*(puissance_n n)
@@ -581,6 +599,10 @@ def puissance_z {G : groupe} (x : G) : ℤ → G
 
 instance {G : groupe} : has_pow G ℤ := ⟨puissance_z⟩
 
+
+
+
+-- Lemme montrant la cohérence entre la puissance par un naturel et un relatif
 lemma coe_pow_nat {G : groupe} {n : ℕ} (x : G) : x ^ n = x ^ (n:ℤ) :=
   begin
     rw int.coe_nat_eq, 
@@ -590,6 +612,11 @@ lemma coe_pow_nat {G : groupe} {n : ℕ} (x : G) : x ^ n = x ^ (n:ℤ) :=
   end
 
 
+
+
+/-
+Différents lemmes de calculs avec les puissances 
+-/
 lemma self_eq_pow_one {G : groupe} (x : G) : x = x^1 :=
   begin
     unfold pow, unfold puissance_n, apply eq.symm, exact G.neutre_droite x,  
@@ -802,6 +829,26 @@ lemma pow_pow {G : groupe} {n m : ℤ} (x : G) : (x^n)^m = (x^(n*m)) :=
     }
   end
 
+/-*******************************FIN Définition de lemmes de calcul pour les puissances******************************-/
+
+
+
+
+
+
+/-************************Lien sous ensemble<-->sous groupe et sous groupes remarquables *****************************-/
+/-
+- Définitions principales :
+  - est_sous_groupe : classe représentant la propriété d'être un sous groupe pour un ensemble
+  - sous_groupe_de_est_sous_groupe : convertit un ensemble qui est_sous_groupe en sous_groupe
+- Notations introduites :
+  - A <₁ G pour indiquer qu'un ensemble A est un sous groupe de G
+  - ↩A pour dénoter le sous_groupe induit par un ensemble A qui vérifie A <₁ G
+    --> ↩ s'écrit grâce à \hookl (ou juste \hook )
+    --> Cette notation n'est pas très logique, peut être trouver mieux ? 
+-/
+
+
 -- Cette classe permet de convertir automatiquement un ensemble qui satisfait
 -- les axiomes d'un sous_groupe comme sa structure de sous groupe sous jacente
 class est_sous_groupe {G: groupe} (A : set G) : Prop := 
@@ -828,14 +875,20 @@ example (G : groupe) (A : set G) (h : A <₁ G) := morphisme (↩A) G
 --↑  type vers un élément d'un autre type, mais ici pas tous les ensembles peuvent être
 --↑  convertis en sous_groupe, seulement ceux qui satisfont les axiomes de stabilité.)
 
+
+-- L'ensemble du sous_groupe déduit par un ensemble A est A lui même
 @[simp] lemma sous_groupe_de_est_sous_groupe_id {G : groupe} (A : set G)
   [pA : est_sous_groupe A] : ((↩A) : set G) = A := rfl
-
+-- Si H est un sous_groupe de G, l'ensemble H.sous_ens vérifie "est_sous_groupe"
 @[instance] lemma sous_groupe_est_sous_groupe (G : groupe) (H : sous_groupe G)
   : est_sous_groupe (H:set G) := ⟨H.inv_stab, H.mul_stab, H.contient_neutre⟩
 
 
 
+
+/-
+  On déclare les sous_groupes qu'on connait 
+-/
 @[instance] lemma triv_est_sous_groupe (G : groupe) : {1} <₁ G :=  
   by { split; intros; rw in_singleton at *; rw H, rw inv_neutre_eq_neutre, rw neutre_gauche', rw H_1 }
 @[instance] lemma groupe_est_sous_groupe (G : groupe) : set.univ <₁ G :=
@@ -851,7 +904,8 @@ end
   : est_sous_groupe ((A:set G)∩B) := ens_inter_ens_est_sous_groupe (A:set G) (B:set G) 
 
 
-lemma x_pow_in_sous_groupe {G: groupe} {x : G} {A : set G} {h : est_sous_groupe A}
+-- Pour x∈A avec A un ensemble qui est_sous_groupe, x^k ∈ A
+lemma x_pow_in_sous_groupe {G: groupe} {x : G} (A : set G) [h : est_sous_groupe A]
   : x∈A → ∀ k : ℤ, x^k ∈ A :=
 begin
   intros h₃ k,
@@ -868,14 +922,29 @@ begin
     exact result_for_nat _,
 end
 
+/-*********************************FIN Lien entre sous ensemble et sous groupe**************************************-/
+
+
+
+
+
+
+/-********************************Définitions sous_groupe engendé et groupe cyclique*********************************-/
+
+-- Sous groupe engendré par l'extérieur
 def sous_groupe_engendre {G: groupe} (A : set G) : set G :=
   ⋂ X : {X': set G // est_sous_groupe X' ∧ A ⊆ X'}, X.val
 
+-- Sous groupe engendré par l'intérieur
 def sous_groupe_engendre₂ {G: groupe} (A : set G) : set G := 
   let F := (λ a:{x//A x}×bool, if a.snd = tt then a.fst.val else a.fst.val⁻¹) in 
   {x | ∃ L : list ({x//A x}×bool), x = prod_all L F}
 
-lemma engendre_est_sous_groupe {G : groupe} (A : set G)
+
+/-
+Preuves que ces définissions définissent bien un sous groupe
+-/
+@[instance] lemma engendre_est_sous_groupe {G : groupe} (A : set G)
   : est_sous_groupe (sous_groupe_engendre A) :=
 begin
   split; unfold sous_groupe_engendre,
@@ -892,8 +961,7 @@ begin
   end
 end
 
-
-lemma engendre_est_sous_groupe₂ {G : groupe} (A : set G)
+@[instance] lemma engendre_est_sous_groupe₂ {G : groupe} (A : set G)
   : est_sous_groupe (sous_groupe_engendre₂ A) :=
 let F := (λ a:{x//A x}×bool, if a.snd = tt then a.fst.val else a.fst.val⁻¹) in
 begin
@@ -929,6 +997,7 @@ begin
 end
 
 
+-- A ⊆ <A>  
 lemma engendre₂_contient_ens {G : groupe} (A : set G) :
   A ⊆ sous_groupe_engendre₂ A :=
 begin
@@ -940,6 +1009,8 @@ begin
   exact (G.neutre_droite a).symm, 
 end
 
+
+--Preuve que les deux définitions définissent le même sous groupe
 lemma engendre₂_est_engendre {G : groupe} (A : set G) :
   sous_groupe_engendre A = sous_groupe_engendre₂ A :=
 begin
@@ -992,20 +1063,53 @@ begin
   }
 end
 
+/-******************************FIN Définitions sous_groupe engendé et groupe cyclique*******************************-/
+
+
+
+
+
+/-*****************************************Sous groupes distingues et exemples ****************************************-/
+/-
+- Définitions principales :
+  - mul_gauche_ens pour définir gH
+  - mul_droite_ens pour définir Hg
+  - est_distingue pour indiquer qu'un sous groupe Hest distingué 
+- Notations introduites : 
+  - H ⊲ G pour dire que Hest ditingué dans G. ⊲ s'écrit grâce à \vartr  
+  - Pour la multiplication à droite, g*₂H.Et pour la multiplication à gauche, H*₃g
+    --> On ne peut pas utiliser * qui est prise par has_mul, et has_mul nécessite que les deux opérandes soient de même type.
+-/
+
+
+/-
+Définitions de gH et Hg et notations pour ces deux multiplications 
+-/
 def mul_gauche_ens {G : groupe} (a : G) (H : set G) : set G :=
   {g : G | ∃ h ∈ H, g = a*h}
 def mul_droite_ens {G : groupe} (H : set G) (a : G) : set G :=
   {g : G | ∃ h ∈ H, g = h*a}
 
-
 local notation a ` *₂ `:51 H:51 :=  mul_gauche_ens a H
 local notation H ` *₃ `:51 a:51 := mul_droite_ens H a
 
+
+
+/-
+- Classe représentant une preuve qu'un sous groupe est distingué 
+- On choisit comme définition H ⊲ G ↔ ∀ g : G, gH = Hg   
+- C'est une classe pour permettre à lean de déduire une telle instance du contexte pour certains théorèmes (par
+  exemple, dans le thèorème d'isomorphisme 1, pas besoin de dire explicitement que ker f est distingué, lean le saura seul)
+-/
 class est_distingue {G : groupe} (H : sous_groupe G) : Prop :=
   (h : ∀ a:G, a *₂ H = H *₃ a)
-
+-- ↓ Notation canonique pour un sous groupe qui est distingué. ⊲ s'écrit \vartr  
 local notation H `⊲`:51 G := @est_distingue G H
 
+
+/-
+Déclarations des groupes distingués connus ({1} et G lui même)
+-/
 @[instance] lemma triv_est_distingue (G : groupe) : ((↩{1}) ⊲ G) :=
 begin
   split, intro, rw ←set_eq, intro, split; intro p;
@@ -1014,7 +1118,6 @@ begin
   existsi (1:G); existsi ((↩{1}):sous_groupe G).contient_neutre; 
   exact peq, 
 end
-
 @[instance] lemma groupe_est_distingue (G : groupe) : ((↩set.univ) ⊲ G) :=
 begin 
   split, intro, rw ←set_eq, intro, split; intro p;
@@ -1026,6 +1129,7 @@ begin
 end
 
 
+-- Caractérisation utile pour travailler avec les sous groupes distingués
 lemma carac_est_distingue {G : groupe} (H' : sous_groupe G)
   : est_distingue H' ↔ ∀ h ∈ H', ∀ g : G, g*h*g⁻¹ ∈ H'  :=
 begin
@@ -1059,6 +1163,7 @@ begin
 end
 
 
+-- On montre que si K ⊲ G, et que K ⊆ H, alors K ⊲ H 
 @[instance] lemma distingue_down_est_distingue {G : groupe} {H K : sous_groupe G}
   (HinK : H ⊆₁ K) [dH : est_distingue H] : est_distingue (H↘K) :=
 begin
@@ -1072,6 +1177,8 @@ begin
   exact goal,
 end
 
+
+-- Utile lorsqu'on veut passer d'une expression du type h*g à une du type g*h'
 lemma distingue_droite_to_gauche {G : groupe } {H' : sous_groupe G}
   (dH : est_distingue H') (h ∈ H') (g : G) : ∃ h' ∈ H', g*h = h'*g :=
 begin
@@ -1080,8 +1187,7 @@ begin
   repeat {rw mul_assoc'}, rw [inv_gauche', neutre_droite],
 end
 
-
---lemma triv_est_sous_groupe {G : groupe} {H' : sous_groupe G}
+/-***************************************FIN Sous groupes distingues et exemples **************************************-/
 
 def rel_gauche_mod {G : groupe} (H : sous_groupe G) : G → G → Prop :=
   λ x y : G, y ∈ x *₂ H 
