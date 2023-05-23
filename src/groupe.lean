@@ -614,6 +614,7 @@ lemma coe_pow_nat {G : groupe} {n : ℕ} (x : G) : x ^ n = x ^ (n:ℤ) :=
 
 
 
+
 /-
 Différents lemmes de calculs avec les puissances 
 -/
