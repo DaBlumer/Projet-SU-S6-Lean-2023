@@ -278,23 +278,6 @@ end
   : est_sous_groupe ((A:set G)∩B) := ens_inter_ens_est_sous_groupe (A:set G) (B:set G) 
 
 
--- Pour x∈A avec A un ensemble qui est_sous_groupe, x^k ∈ A
-lemma x_pow_in_sous_groupe {G: groupe} {x : G} (A : set G) [h : est_sous_groupe A]
-  : x∈A → ∀ k : ℤ, x^k ∈ A :=
-begin
-  intros h₃ k,
-  have result_for_nat : ∀ n : ℕ, x^n ∈ A,
-    intro n, induction n with n hn, 
-    rw pow_zero_eq_one, exact h.contient_neutre,
-    rw [coe_pow_nat,int.coe_nat_succ,mul_right_pow],
-    rw coe_pow_nat at hn,
-    exact h.mul_stab _ hn _ h₃, 
-  cases k,
-    rw [← int.coe_nat_eq, ←coe_pow_nat], exact result_for_nat _,
-    rw [← int.neg_of_nat_of_succ, pow_minus_eq_inv_pow],
-    apply h.1,
-    exact result_for_nat _,
-end
 
 /-*********************************FIN Lien entre sous ensemble et sous groupe**************************************-/
 
